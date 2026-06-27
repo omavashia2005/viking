@@ -55,6 +55,11 @@
       .errmsg { color: var(--fg); font-size: 15px; font-weight: 300; line-height: 1.5;
         white-space: pre-wrap; }
       .errhint { color: var(--dim); font-size: 11px; margin-top: auto; }
+      .grip { position: fixed; right: 4px; bottom: 4px; width: 12px; height: 12px;
+        cursor: nwse-resize; -webkit-app-region: no-drag; opacity: 0.35;
+        background: linear-gradient(135deg, transparent 55%, var(--fg) 55% 62%,
+          transparent 62% 72%, var(--fg) 72% 79%, transparent 79%); }
+      .grip:hover { opacity: 0.8; }
     </style>
   </head>
   <body><div id="root"></div><script src="../dist/renderer.js"></script></body>

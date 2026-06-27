@@ -86,6 +86,7 @@ export default function App(): JSX.Element {
           <div className="errhint">press esc to dismiss · then retry with ⌘I or ⌘⇧I</div>
         </div>
       )}
+      <div className="grip" />
     </div>
   );
 }

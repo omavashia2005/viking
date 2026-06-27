@@ -6,16 +6,19 @@ import { generate } from './llm';
 let win: BrowserWindow | null = null;
 
 function createWindow(): BrowserWindow {
-  const { width, height } = screen.getPrimaryDisplay().workAreaSize;
+  const { width } = screen.getPrimaryDisplay().workAreaSize;
   const w = 720, h = 460;
   const w0 = new BrowserWindow({
     width: w,
     height: h,
+    minWidth: 420,
+    minHeight: 200,
     x: Math.round((width - w) / 2),
-    y: Math.round(height * 0.18),
+    y: 16, // pinned to top center; drag the header bar to move, edges to resize
     transparent: true,
     frame: false,
-    resizable: false,
+    resizable: true,
+    movable: true,
     alwaysOnTop: true,
     skipTaskbar: true,
     hasShadow: false,
