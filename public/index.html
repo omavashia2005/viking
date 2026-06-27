@@ -18,9 +18,10 @@
 
       .overlay, .spot { height: 100vh; display: flex; flex-direction: column;
         background: var(--bg);
-        backdrop-filter: blur(22px) saturate(140%); -webkit-backdrop-filter: blur(22px) saturate(140%);
+        backdrop-filter: blur(14px) saturate(140%); -webkit-backdrop-filter: blur(14px) saturate(140%);
         border: 1px solid var(--line); border-radius: 14px; overflow: hidden;
-        box-shadow: 0 30px 80px rgba(0,0,0,0.5); -webkit-app-region: drag; }
+        box-shadow: 0 30px 80px rgba(0,0,0,0.5); -webkit-app-region: drag;
+        contain: layout style; }
 
       .bar { display: flex; align-items: center; gap: 10px; padding: 10px 14px;
         border-bottom: 1px solid var(--line); font-size: 11px; letter-spacing: 0.05em; }
@@ -47,7 +48,9 @@
         color: var(--fg); font: inherit; font-size: 18px; font-weight: 300;
         caret-color: var(--accent); resize: none; padding: 0; margin: 0;
         line-height: 1.4; max-height: 240px; overflow-y: auto;
-        font-family: inherit; }
+        font-family: inherit;
+        contain: paint; transform: translateZ(0); will-change: scroll-position;
+        overscroll-behavior: contain; }
       .prompt textarea::placeholder { color: var(--dim); font-style: italic; }
       .chip { color: var(--accent); font-size: 10px; text-transform: lowercase;
         letter-spacing: 0.1em; border: 1px solid rgba(212,255,0,0.35); padding: 2px 8px; border-radius: 999px; }
@@ -64,11 +67,19 @@
         transition: color 140ms ease; }
       .code { flex: 1; margin: 0; padding: 14px 18px; overflow-y: auto; overflow-x: hidden;
         font-size: 13px; line-height: 1.55; white-space: pre-wrap; word-break: break-word;
-        user-select: text; background: transparent; cursor: copy; }
+        user-select: text; background: transparent; cursor: copy;
+        /* responsive scroll: isolate paint, give it its own GPU layer, kill rubber-band */
+        contain: paint; transform: translateZ(0); will-change: scroll-position;
+        overscroll-behavior: contain; scrollbar-gutter: stable; }
       .code:hover ~ .codehead .copyhint, .codewrap:hover .copyhint { color: var(--fg); }
       .code code.hljs, .code code { background: transparent !important; padding: 0; }
-      .code::-webkit-scrollbar { width: 8px; height: 8px; }
-      .code::-webkit-scrollbar-thumb { background: rgba(244,241,234,0.12); border-radius: 4px; }
+      /* shared scrollbar treatment — thinner, less paint-heavy */
+      .code::-webkit-scrollbar, .settings::-webkit-scrollbar, .prompt textarea::-webkit-scrollbar { width: 6px; height: 6px; }
+      .code::-webkit-scrollbar-track, .settings::-webkit-scrollbar-track, .prompt textarea::-webkit-scrollbar-track { background: transparent; }
+      .code::-webkit-scrollbar-thumb, .settings::-webkit-scrollbar-thumb, .prompt textarea::-webkit-scrollbar-thumb {
+        background: rgba(244,241,234,0.14); border-radius: 3px; transition: background 120ms ease; }
+      .code::-webkit-scrollbar-thumb:hover, .settings::-webkit-scrollbar-thumb:hover, .prompt textarea::-webkit-scrollbar-thumb:hover {
+        background: rgba(244,241,234,0.32); }
 
       .errbody { flex: 1; padding: 28px 26px; display: flex; flex-direction: column;
         gap: 12px; -webkit-app-region: no-drag; user-select: text; }
@@ -77,7 +88,9 @@
       .errhint { color: var(--dim); font-size: 11px; margin-top: auto; }
 
       .settings { flex: 1; padding: 22px 26px; display: flex; flex-direction: column; gap: 14px;
-        overflow-y: auto; -webkit-app-region: no-drag; }
+        overflow-y: auto; -webkit-app-region: no-drag;
+        contain: paint; transform: translateZ(0); will-change: scroll-position;
+        overscroll-behavior: contain; scrollbar-gutter: stable; }
       .settings label { display: flex; flex-direction: column; gap: 5px; }
       .settings label span { color: var(--dim); font-size: 10.5px;
         text-transform: lowercase; letter-spacing: 0.16em; }
