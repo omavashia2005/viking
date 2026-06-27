@@ -4,12 +4,16 @@
   "main": "dist/main.js",
   "scripts": {
     "start": "npm run build && concurrently \"npm run watch\" \"electron .\"",
-    "watch": "concurrently \"esbuild src/main.ts --outfile=dist/main.js --format=cjs --watch\" \"esbuild src/index.tsx --bundle --outfile=dist/renderer.js --watch --loader:.js=jsx --define:process.env.NODE_ENV='\\\"development\\\"'\"",
-    "build": "esbuild src/main.ts --outfile=dist/main.js --format=cjs && esbuild src/index.tsx --bundle --outfile=dist/renderer.js --loader:.js=jsx --define:process.env.NODE_ENV='\"development\"'"
+    "watch": "concurrently \"esbuild src/main.ts --bundle --platform=node --external:electron --outfile=dist/main.js --format=cjs --watch\" \"esbuild src/preload.ts --bundle --platform=node --external:electron --outfile=dist/preload.js --format=cjs --watch\" \"esbuild src/index.tsx --bundle --outfile=dist/renderer.js --watch --loader:.js=jsx --define:process.env.NODE_ENV='\\\"development\\\"'\"",
+    "build": "esbuild src/main.ts --bundle --platform=node --external:electron --outfile=dist/main.js --format=cjs && esbuild src/preload.ts --bundle --platform=node --external:electron --outfile=dist/preload.js --format=cjs && esbuild src/index.tsx --bundle --outfile=dist/renderer.js --loader:.js=jsx --define:process.env.NODE_ENV='\"development\"'"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.4",
+    "@upstash/context7-mcp": "^1.0.14",
+    "openai": "^4.77.0",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "react-dom": "^18.2.0",
+    "zod": "^3.23.8"
   },
   "devDependencies": {
     "electron": "^27.0.0",
