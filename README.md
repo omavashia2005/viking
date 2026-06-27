@@ -32,10 +32,10 @@ npm start
 
 | key       | what it does                                                |
 | --------- | ----------------------------------------------------------- |
-| `⌘ I`     | open with a text box, type your question, enter to submit   |
-| `⌘ ⇧ I`   | open and query immediately using only the screenshot + code |
-| `⌘ 1..9`  | switch between rendered options                             |
-| `esc`     | hide the overlay                                            |
+| `⌘ I`     | open the prompt. If results are visible, opens a follow-up referencing the active option. |
+| `⌘ 1..9`  | switch between rendered options                                                            |
+| `⌘ C`     | copy the active option (defers to native copy if you have text selected)                   |
+| `esc`     | hide the overlay                                                                           |
 
 Edit hotkeys in `src/config.ts`.
 

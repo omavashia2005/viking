@@ -27,15 +27,11 @@ export default function App(): JSX.Element {
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
-    window.viking.on('viking:show', ({ mode, refineFrom }: { mode: 'textbox' | 'direct' | 'followup'; refineFrom?: Option }) => {
+    window.viking.on('viking:show', ({ mode, refineFrom }: { mode: 'textbox' | 'followup'; refineFrom?: Option }) => {
       setError(''); setPrompt(''); setCopied(false);
-      if (mode === 'textbox' || mode === 'followup') {
-        setPhase('textbox');
-        setRefineFrom(mode === 'followup' ? refineFrom : undefined);
-        setTimeout(() => inputRef.current?.focus(), 50);
-      } else {
-        setPhase('loading'); setOptions([]); setActive(0); setRefineFrom(undefined);
-      }
+      setPhase('textbox');
+      setRefineFrom(mode === 'followup' ? refineFrom : undefined);
+      setTimeout(() => inputRef.current?.focus(), 50);
     });
     window.viking.on('viking:loading', () => setPhase('loading'));
     window.viking.on('viking:result', (p: { options: Option[]; error?: string }) => {
@@ -174,7 +170,7 @@ export default function App(): JSX.Element {
         <div className="errbody">
           <div className="errhead">something went wrong</div>
           <div className="errmsg">{error}</div>
-          <div className="errhint">press esc to dismiss · then retry with ⌘I or ⌘⇧I</div>
+          <div className="errhint">press esc to dismiss · then retry with ⌘I</div>
         </div>
       )}
       <div className="grip" />

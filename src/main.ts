@@ -50,9 +50,9 @@ async function captureScreen(): Promise<string | undefined> {
   } catch { return undefined; }
 }
 
-function show(mode: 'textbox' | 'direct' | 'followup', refineFrom?: Option): void {
+function show(mode: 'textbox' | 'followup', refineFrom?: Option): void {
   if (!win) win = createWindow();
-  setMode(mode === 'direct' ? 'full' : 'spotlight');
+  setMode('spotlight');
   win.showInactive();
   win.focus();
   win.webContents.send('viking:show', { mode, refineFrom });
@@ -104,11 +104,10 @@ async function run(prompt: string | undefined, refineFrom?: Option): Promise<voi
 app.whenReady().then(() => {
   win = createWindow();
 
-  globalShortcut.register(config.hotkeys.direct, () => {
+  globalShortcut.register(config.hotkeys.open, () => {
     if (lastOptions.length && win?.isVisible()) show('followup', lastOptions[activeIdx]);
-    else { show('direct'); run(undefined); }
+    else show('textbox');
   });
-  globalShortcut.register(config.hotkeys.withTextbox, () => show('textbox'));
   globalShortcut.register(config.hotkeys.close, hide);
 
   ipcMain.on('viking:submit', (_e, payload: { prompt: string; refineFrom?: Option }) => run(payload.prompt, payload.refineFrom));

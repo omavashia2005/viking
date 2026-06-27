@@ -4,8 +4,7 @@ import path from 'node:path';
 // All knobs live here. Edit me, don't bury settings in the rest of the code.
 export const config = {
   hotkeys: {
-    withTextbox: 'CommandOrControl+I',
-    direct: 'CommandOrControl+Shift+I',
+    open: 'CommandOrControl+I', // opens a prompt; if results are visible, it's a follow-up
     close: 'Escape',
     copy: 'c', // window-scoped: ⌘/Ctrl + this key copies the active option
   },
