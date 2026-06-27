@@ -31,6 +31,7 @@ export default function App(): JSX.Element {
   const [llm, setLlm] = useState<LLM>({ baseURL: '', apiKey: '', model: '' });
   const [hotkeys, setHotkeys] = useState<Hotkeys>({ open: '', settings: '', close: '', copy: '' });
   const [saved, setSaved] = useState(false);
+  const settingsReady = useRef(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -55,6 +56,17 @@ export default function App(): JSX.Element {
 
   useEffect(() => { window.viking.setActive(active); }, [active]);
 
+  // Autosave settings on change. ponytail: per-keystroke write, debounce when disk thrash matters.
+  useEffect(() => {
+    if (!settingsReady.current) return;
+    let cancelled = false;
+    const t = setTimeout(async () => {
+      await window.viking.saveSettings({ llm, hotkeys });
+      if (!cancelled) { setSaved(true); setTimeout(() => setSaved(false), 1200); }
+    }, 250);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [llm, hotkeys]);
+
   useEffect(() => {
     const onKey = async (e: KeyboardEvent) => {
       const t = e.target as HTMLElement | null;
@@ -65,11 +77,14 @@ export default function App(): JSX.Element {
       if (editable && e.key === 'Escape') return window.viking.hide();
       if (mod && (e.key.toLowerCase() === 's' || e.key.toLowerCase() === 'k')) {
         e.preventDefault();
+        settingsReady.current = false;
         const s = await window.viking.getSettings();
         setLlm(s.llm); setHotkeys(s.hotkeys);
         setSaved(false);
         setPhase(e.key.toLowerCase() === 'k' ? 'keymaps' : 'provider');
         window.viking.resize(380);
+        // mark ready after the populated state has flushed, so the autosave effect skips the load.
+        setTimeout(() => { settingsReady.current = true; }, 0);
         return;
       }
       if (mod && /^[1-9]$/.test(e.key)) {
@@ -202,14 +217,7 @@ export default function App(): JSX.Element {
       )}
 
       {phase === 'provider' && (
-        <form
-          className="settings"
-          onSubmit={async e => {
-            e.preventDefault();
-            await window.viking.saveSettings({ llm });
-            setSaved(true); setTimeout(() => setSaved(false), 1400);
-          }}
-        >
+        <div className="settings">
           <label><span>base url</span>
             <input value={llm.baseURL} onChange={e => setLlm({ ...llm, baseURL: e.target.value })}
               placeholder="https://api.openai.com/v1" spellCheck={false} autoFocus />
@@ -223,21 +231,14 @@ export default function App(): JSX.Element {
               placeholder="gpt-4o" spellCheck={false} />
           </label>
           <div className="srow">
-            <button type="submit" className="save">{saved ? '✓ saved' : 'save'}</button>
+            <span className="autosave">{saved ? '✓ saved' : 'autosaves as you type'}</span>
             <span className="shint">q to close · ⌘K for keymaps</span>
           </div>
-        </form>
+        </div>
       )}
 
       {phase === 'keymaps' && (
-        <form
-          className="settings"
-          onSubmit={async e => {
-            e.preventDefault();
-            await window.viking.saveSettings({ hotkeys });
-            setSaved(true); setTimeout(() => setSaved(false), 1400);
-          }}
-        >
+        <div className="settings">
           <label><span>open prompt (global)</span>
             <input value={hotkeys.open} onChange={e => setHotkeys({ ...hotkeys, open: e.target.value })}
               placeholder="CommandOrControl+I" spellCheck={false} autoFocus />
@@ -255,10 +256,10 @@ export default function App(): JSX.Element {
               placeholder="c" spellCheck={false} />
           </label>
           <div className="srow">
-            <button type="submit" className="save">{saved ? '✓ saved' : 'save'}</button>
+            <span className="autosave">{saved ? '✓ saved' : 'autosaves as you type'}</span>
             <span className="shint">q to close · ⌘S for provider</span>
           </div>
-        </form>
+        </div>
       )}
       <div className="grip" />
     </div>
