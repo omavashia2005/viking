@@ -53,7 +53,8 @@ async function captureScreen(): Promise<string | undefined> {
 function show(mode: 'textbox' | 'followup', refineFrom?: Option): void {
   if (!win) win = createWindow();
   setMode('spotlight');
-  win.showInactive();
+  win.show();
+  app.focus({ steal: true }); // macOS: bring our app forward so the textarea gets keyboard input
   win.focus();
   win.webContents.send('viking:show', { mode, refineFrom });
 }
