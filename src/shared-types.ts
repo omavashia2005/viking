@@ -10,7 +10,8 @@ export const Context = z.object({
 export type Context = z.infer<typeof Context>;
 
 export const Option = z.object({
-  label: z.string(), // 1-3 word approach name
+  label: z.string(),    // 1-3 word approach name
+  language: z.string(), // hljs-style lang id: "typescript", "python", "rust", etc.
   code: z.string(),
 });
 export type Option = z.infer<typeof Option>;

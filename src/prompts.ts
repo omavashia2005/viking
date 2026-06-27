@@ -7,7 +7,7 @@ export const prompts = {
 Return exactly ${config.numOptions} distinct, idiomatic ways to write the snippet the user wants.
 Each option must be runnable code only — no prose, no comments unless idiomatic, no markdown fences.
 Vary the approach across options (e.g. naive vs. stdlib vs. third-party vs. one-liner). Prefer the language the user appears to be using.
-Return JSON matching the provided schema; "code" is the snippet, "label" is a 1-3 word identifier of the approach.`,
+Return JSON matching the provided schema; "code" is the snippet, "label" is a 1-3 word identifier of the approach, "language" is the highlight.js language id (e.g. "typescript", "python", "rust", "go", "bash").`,
 
   user: (ctx: Context) => {
     const parts: string[] = [];
