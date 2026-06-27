@@ -10,14 +10,15 @@ declare global {
       setActive: (idx: number) => void;
       resize: (height: number) => void;
       hide: () => void;
-      getSettings: () => Promise<{ baseURL: string; apiKey: string; model: string }>;
-      saveSettings: (s: { baseURL: string; apiKey: string; model: string }) => Promise<void>;
+      getSettings: () => Promise<{ llm: LLM; hotkeys: Hotkeys }>;
+      saveSettings: (s: { llm?: Partial<LLM>; hotkeys?: Partial<Hotkeys> }) => Promise<void>;
     };
   }
 }
 
 type Phase = 'hidden' | 'textbox' | 'loading' | 'results' | 'error' | 'settings';
-type Settings = { baseURL: string; apiKey: string; model: string };
+type LLM = { baseURL: string; apiKey: string; model: string };
+type Hotkeys = { open: string; settings: string; close: string; copy: string };
 
 export default function App(): JSX.Element {
   const [phase, setPhase] = useState<Phase>('hidden');
@@ -27,7 +28,9 @@ export default function App(): JSX.Element {
   const [error, setError] = useState('');
   const [refineFrom, setRefineFrom] = useState<Option | undefined>();
   const [copied, setCopied] = useState(false);
-  const [settings, setSettings] = useState<Settings>({ baseURL: '', apiKey: '', model: '' });
+  const [llm, setLlm] = useState<LLM>({ baseURL: '', apiKey: '', model: '' });
+  const [hotkeys, setHotkeys] = useState<Hotkeys>({ open: '', settings: '', close: '', copy: '' });
+  const [settingsFocus, setSettingsFocus] = useState<'llm' | 'hotkeys'>('llm');
   const [saved, setSaved] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -55,13 +58,19 @@ export default function App(): JSX.Element {
 
   useEffect(() => {
     const onKey = async (e: KeyboardEvent) => {
-      if (e.key === 'Escape') return window.viking.hide();
+      const t = e.target as HTMLElement | null;
+      const editable = !!t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || (t as any).isContentEditable);
       const mod = e.metaKey || e.ctrlKey;
-      if (mod && e.key.toLowerCase() === 's') {
+      // q closes when no input is focused; Esc kept as the escape-hatch while typing.
+      if (!editable && (e.key === 'q' || e.key === 'Q')) { e.preventDefault(); return window.viking.hide(); }
+      if (editable && e.key === 'Escape') return window.viking.hide();
+      if (mod && (e.key.toLowerCase() === 's' || e.key.toLowerCase() === 'k')) {
         e.preventDefault();
         const s = await window.viking.getSettings();
-        setSettings(s); setSaved(false); setPhase('settings');
-        window.viking.resize(420);
+        setLlm(s.llm); setHotkeys(s.hotkeys);
+        setSettingsFocus(e.key.toLowerCase() === 'k' ? 'hotkeys' : 'llm');
+        setSaved(false); setPhase('settings');
+        window.viking.resize(520);
         return;
       }
       if (mod && /^[1-9]$/.test(e.key)) {
@@ -161,7 +170,7 @@ export default function App(): JSX.Element {
             ))}
           </nav>
         )}
-        <span className="hint">esc</span>
+        <span className="hint">q</span>
       </header>
 
       {phase === 'loading' && <div className="loading pulse">thinking</div>}
@@ -188,7 +197,7 @@ export default function App(): JSX.Element {
         <div className="errbody">
           <div className="errhead">something went wrong</div>
           <div className="errmsg">{error}</div>
-          <div className="errhint">press esc to dismiss · then retry with ⌘I</div>
+          <div className="errhint">press q to dismiss · then retry with ⌘I</div>
         </div>
       )}
 
@@ -197,25 +206,47 @@ export default function App(): JSX.Element {
           className="settings"
           onSubmit={async e => {
             e.preventDefault();
-            await window.viking.saveSettings(settings);
+            await window.viking.saveSettings({ llm, hotkeys });
             setSaved(true); setTimeout(() => setSaved(false), 1400);
           }}
         >
-          <label><span>provider base url</span>
-            <input value={settings.baseURL} onChange={e => setSettings({ ...settings, baseURL: e.target.value })}
-              placeholder="https://api.openai.com/v1" spellCheck={false} autoFocus />
-          </label>
-          <label><span>api key</span>
-            <input value={settings.apiKey} onChange={e => setSettings({ ...settings, apiKey: e.target.value })}
-              placeholder="sk-…" type="password" spellCheck={false} />
-          </label>
-          <label><span>model</span>
-            <input value={settings.model} onChange={e => setSettings({ ...settings, model: e.target.value })}
-              placeholder="gpt-4o" spellCheck={false} />
-          </label>
+          <div className="sgroup">
+            <div className="sgrouph">provider</div>
+            <label><span>base url</span>
+              <input value={llm.baseURL} onChange={e => setLlm({ ...llm, baseURL: e.target.value })}
+                placeholder="https://api.openai.com/v1" spellCheck={false} autoFocus={settingsFocus === 'llm'} />
+            </label>
+            <label><span>api key</span>
+              <input value={llm.apiKey} onChange={e => setLlm({ ...llm, apiKey: e.target.value })}
+                placeholder="sk-…" type="password" spellCheck={false} />
+            </label>
+            <label><span>model</span>
+              <input value={llm.model} onChange={e => setLlm({ ...llm, model: e.target.value })}
+                placeholder="gpt-4o" spellCheck={false} />
+            </label>
+          </div>
+          <div className="sgroup">
+            <div className="sgrouph">keymaps</div>
+            <label><span>open prompt (global)</span>
+              <input value={hotkeys.open} onChange={e => setHotkeys({ ...hotkeys, open: e.target.value })}
+                placeholder="CommandOrControl+I" spellCheck={false} autoFocus={settingsFocus === 'hotkeys'} />
+            </label>
+            <label><span>open settings (window)</span>
+              <input value={hotkeys.settings} onChange={e => setHotkeys({ ...hotkeys, settings: e.target.value })}
+                placeholder="CommandOrControl+K" spellCheck={false} />
+            </label>
+            <label><span>close key (window, ignored while typing)</span>
+              <input value={hotkeys.close} onChange={e => setHotkeys({ ...hotkeys, close: e.target.value })}
+                placeholder="q" spellCheck={false} />
+            </label>
+            <label><span>copy active (⌘/Ctrl + …)</span>
+              <input value={hotkeys.copy} onChange={e => setHotkeys({ ...hotkeys, copy: e.target.value })}
+                placeholder="c" spellCheck={false} />
+            </label>
+          </div>
           <div className="srow">
             <button type="submit" className="save">{saved ? '✓ saved' : 'save'}</button>
-            <span className="shint">esc to close · ⌘S anywhere in the overlay opens this</span>
+            <span className="shint">q to close · ⌘S provider · ⌘K keymaps</span>
           </div>
         </form>
       )}

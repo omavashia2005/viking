@@ -4,9 +4,10 @@ import path from 'node:path';
 // All knobs live here. Edit me, don't bury settings in the rest of the code.
 export const config = {
   hotkeys: {
-    open: 'CommandOrControl+I', // opens a prompt; if results are visible, it's a follow-up
-    close: 'Escape',
-    copy: 'c', // window-scoped: ⌘/Ctrl + this key copies the active option
+    open: 'CommandOrControl+I', // global; opens a prompt (or follow-up if results visible)
+    settings: 'CommandOrControl+K', // window-scoped; opens settings (⌘S also works)
+    close: 'q',                     // window-scoped; ignored while typing in an input
+    copy: 'c',                      // window-scoped: ⌘/Ctrl + this key copies the active option
   },
   // Any OpenAI-schema-compatible endpoint. Override via env.
   llm: {

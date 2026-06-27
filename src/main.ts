@@ -7,12 +7,18 @@ import type { Option } from './shared-types';
 
 const settingsFile = () => path.join(app.getPath('userData'), 'viking-settings.json');
 // ponytail: plaintext api key on disk under the user's app data. Swap for keytar if shared machines matter.
+type Persisted = { llm?: Partial<typeof config.llm>; hotkeys?: Partial<typeof config.hotkeys> };
 function loadSettings(): void {
-  try { Object.assign(config.llm, JSON.parse(fs.readFileSync(settingsFile(), 'utf8'))); } catch {}
+  try {
+    const j: Persisted = JSON.parse(fs.readFileSync(settingsFile(), 'utf8'));
+    if (j.llm) Object.assign(config.llm, j.llm);
+    if (j.hotkeys) Object.assign(config.hotkeys, j.hotkeys);
+  } catch {}
 }
-function saveSettings(s: Partial<typeof config.llm>): void {
-  Object.assign(config.llm, s);
-  fs.writeFileSync(settingsFile(), JSON.stringify(config.llm, null, 2));
+function saveSettings(s: Persisted): void {
+  if (s.llm) Object.assign(config.llm, s.llm);
+  if (s.hotkeys) Object.assign(config.hotkeys, s.hotkeys);
+  fs.writeFileSync(settingsFile(), JSON.stringify({ llm: config.llm, hotkeys: config.hotkeys }, null, 2));
 }
 
 let win: BrowserWindow | null = null;
@@ -121,11 +127,12 @@ app.whenReady().then(() => {
   loadSettings();
   win = createWindow();
 
-  globalShortcut.register(config.hotkeys.open, () => {
+  const registerOpen = () => globalShortcut.register(config.hotkeys.open, () => {
     if (lastOptions.length && win?.isVisible()) show('followup', lastOptions[activeIdx]);
     else show('textbox');
   });
-  globalShortcut.register(config.hotkeys.close, hide);
+  registerOpen();
+  // close is window-scoped (handled in renderer keydown) — registering 'q' globally would steal it system-wide.
 
   ipcMain.on('viking:submit', (_e, payload: { prompt: string; refineFrom?: Option }) => run(payload.prompt, payload.refineFrom));
   ipcMain.on('viking:setActive', (_e, idx: number) => { activeIdx = idx; });
@@ -137,8 +144,15 @@ app.whenReady().then(() => {
     win.setBounds({ ...b, height: Math.min(Math.ceil(height), max) });
   });
   ipcMain.on('viking:hide', hide);
-  ipcMain.handle('viking:getSettings', () => ({ baseURL: config.llm.baseURL, apiKey: config.llm.apiKey, model: config.llm.model }));
-  ipcMain.handle('viking:saveSettings', (_e, s: Partial<typeof config.llm>) => { saveSettings(s); });
+  ipcMain.handle('viking:getSettings', () => ({ llm: { ...config.llm }, hotkeys: { ...config.hotkeys } }));
+  ipcMain.handle('viking:saveSettings', (_e, s: Persisted) => {
+    const prevOpen = config.hotkeys.open;
+    saveSettings(s);
+    if (s.hotkeys?.open && s.hotkeys.open !== prevOpen) {
+      globalShortcut.unregister(prevOpen);
+      registerOpen();
+    }
+  });
 });
 
 app.on('will-quit', () => globalShortcut.unregisterAll());

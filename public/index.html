@@ -76,8 +76,11 @@
       .errmsg { color: var(--fg); font-size: 15px; font-weight: 300; line-height: 1.5; white-space: pre-wrap; }
       .errhint { color: var(--dim); font-size: 11px; margin-top: auto; }
 
-      .settings { flex: 1; padding: 24px 26px; display: flex; flex-direction: column; gap: 14px;
-        -webkit-app-region: no-drag; }
+      .settings { flex: 1; padding: 22px 26px; display: flex; flex-direction: column; gap: 18px;
+        overflow-y: auto; -webkit-app-region: no-drag; }
+      .sgroup { display: flex; flex-direction: column; gap: 10px; }
+      .sgrouph { color: var(--accent); font-size: 10px; letter-spacing: 0.22em;
+        text-transform: uppercase; padding-bottom: 4px; border-bottom: 1px solid var(--line); }
       .settings label { display: flex; flex-direction: column; gap: 5px; }
       .settings label span { color: var(--dim); font-size: 10.5px;
         text-transform: lowercase; letter-spacing: 0.16em; }

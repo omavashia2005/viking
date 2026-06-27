@@ -33,12 +33,13 @@ npm start
 | key       | what it does                                                |
 | --------- | ----------------------------------------------------------- |
 | `⌘ I`     | open the prompt. If results are visible, opens a follow-up referencing the active option. |
-| `⌘ S`     | open settings (provider base URL, API key, model). Window-scoped — overlay must be open.   |
+| `⌘ S`     | open settings → provider section (base URL, API key, model). Window-scoped.                |
+| `⌘ K`     | open settings → keymaps section. Window-scoped.                                            |
 | `⌘ 1..9`  | switch between rendered options                                                            |
 | `⌘ C`     | copy the active option (defers to native copy if you have text selected)                   |
-| `esc`     | hide the overlay                                                                           |
+| `q`       | hide the overlay (ignored while typing in an input — use `esc` then)                       |
 
-Settings are saved to `<userData>/viking-settings.json` (plaintext API key) and override the env vars after first save.
+Settings (provider + keymaps) are saved to `<userData>/viking-settings.json` and override the defaults from `src/config.ts`.
 
 Edit hotkeys in `src/config.ts`.
 
