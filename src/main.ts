@@ -1,8 +1,19 @@
 import { app, BrowserWindow, globalShortcut, ipcMain, screen, desktopCapturer, nativeImage } from 'electron';
 import path from 'node:path';
+import fs from 'node:fs';
 import { config } from './config';
 import { generate } from './llm';
 import type { Option } from './shared-types';
+
+const settingsFile = () => path.join(app.getPath('userData'), 'viking-settings.json');
+// ponytail: plaintext api key on disk under the user's app data. Swap for keytar if shared machines matter.
+function loadSettings(): void {
+  try { Object.assign(config.llm, JSON.parse(fs.readFileSync(settingsFile(), 'utf8'))); } catch {}
+}
+function saveSettings(s: Partial<typeof config.llm>): void {
+  Object.assign(config.llm, s);
+  fs.writeFileSync(settingsFile(), JSON.stringify(config.llm, null, 2));
+}
 
 let win: BrowserWindow | null = null;
 let lastOptions: Option[] = [];
@@ -107,6 +118,7 @@ async function run(prompt: string | undefined, refineFrom?: Option): Promise<voi
 }
 
 app.whenReady().then(() => {
+  loadSettings();
   win = createWindow();
 
   globalShortcut.register(config.hotkeys.open, () => {
@@ -125,6 +137,8 @@ app.whenReady().then(() => {
     win.setBounds({ ...b, height: Math.min(Math.ceil(height), max) });
   });
   ipcMain.on('viking:hide', hide);
+  ipcMain.handle('viking:getSettings', () => ({ baseURL: config.llm.baseURL, apiKey: config.llm.apiKey, model: config.llm.model }));
+  ipcMain.handle('viking:saveSettings', (_e, s: Partial<typeof config.llm>) => { saveSettings(s); });
 });
 
 app.on('will-quit', () => globalShortcut.unregisterAll());

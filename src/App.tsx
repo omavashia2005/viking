@@ -10,11 +10,14 @@ declare global {
       setActive: (idx: number) => void;
       resize: (height: number) => void;
       hide: () => void;
+      getSettings: () => Promise<{ baseURL: string; apiKey: string; model: string }>;
+      saveSettings: (s: { baseURL: string; apiKey: string; model: string }) => Promise<void>;
     };
   }
 }
 
-type Phase = 'hidden' | 'textbox' | 'loading' | 'results' | 'error';
+type Phase = 'hidden' | 'textbox' | 'loading' | 'results' | 'error' | 'settings';
+type Settings = { baseURL: string; apiKey: string; model: string };
 
 export default function App(): JSX.Element {
   const [phase, setPhase] = useState<Phase>('hidden');
@@ -24,6 +27,8 @@ export default function App(): JSX.Element {
   const [error, setError] = useState('');
   const [refineFrom, setRefineFrom] = useState<Option | undefined>();
   const [copied, setCopied] = useState(false);
+  const [settings, setSettings] = useState<Settings>({ baseURL: '', apiKey: '', model: '' });
+  const [saved, setSaved] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -52,6 +57,13 @@ export default function App(): JSX.Element {
     const onKey = async (e: KeyboardEvent) => {
       if (e.key === 'Escape') return window.viking.hide();
       const mod = e.metaKey || e.ctrlKey;
+      if (mod && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        const s = await window.viking.getSettings();
+        setSettings(s); setSaved(false); setPhase('settings');
+        window.viking.resize(420);
+        return;
+      }
       if (mod && /^[1-9]$/.test(e.key)) {
         const i = +e.key - 1;
         if (i < options.length) setActive(i);
@@ -139,6 +151,7 @@ export default function App(): JSX.Element {
         <span className="sep">/</span>
         {phase === 'loading' && <span className="state pulse">gathering context · querying model</span>}
         {phase === 'error' && <span className="state err">error</span>}
+        {phase === 'settings' && <span className="state">settings</span>}
         {phase === 'results' && (
           <nav className="tabs">
             {options.map((o, i) => (
@@ -177,6 +190,34 @@ export default function App(): JSX.Element {
           <div className="errmsg">{error}</div>
           <div className="errhint">press esc to dismiss · then retry with ⌘I</div>
         </div>
+      )}
+
+      {phase === 'settings' && (
+        <form
+          className="settings"
+          onSubmit={async e => {
+            e.preventDefault();
+            await window.viking.saveSettings(settings);
+            setSaved(true); setTimeout(() => setSaved(false), 1400);
+          }}
+        >
+          <label><span>provider base url</span>
+            <input value={settings.baseURL} onChange={e => setSettings({ ...settings, baseURL: e.target.value })}
+              placeholder="https://api.openai.com/v1" spellCheck={false} autoFocus />
+          </label>
+          <label><span>api key</span>
+            <input value={settings.apiKey} onChange={e => setSettings({ ...settings, apiKey: e.target.value })}
+              placeholder="sk-…" type="password" spellCheck={false} />
+          </label>
+          <label><span>model</span>
+            <input value={settings.model} onChange={e => setSettings({ ...settings, model: e.target.value })}
+              placeholder="gpt-4o" spellCheck={false} />
+          </label>
+          <div className="srow">
+            <button type="submit" className="save">{saved ? '✓ saved' : 'save'}</button>
+            <span className="shint">esc to close · ⌘S anywhere in the overlay opens this</span>
+          </div>
+        </form>
       )}
       <div className="grip" />
     </div>

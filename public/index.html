@@ -76,6 +76,22 @@
       .errmsg { color: var(--fg); font-size: 15px; font-weight: 300; line-height: 1.5; white-space: pre-wrap; }
       .errhint { color: var(--dim); font-size: 11px; margin-top: auto; }
 
+      .settings { flex: 1; padding: 24px 26px; display: flex; flex-direction: column; gap: 14px;
+        -webkit-app-region: no-drag; }
+      .settings label { display: flex; flex-direction: column; gap: 5px; }
+      .settings label span { color: var(--dim); font-size: 10.5px;
+        text-transform: lowercase; letter-spacing: 0.16em; }
+      .settings input { background: rgba(0,0,0,0.22); border: 1px solid var(--line);
+        border-radius: 6px; padding: 9px 11px; color: var(--fg);
+        font: inherit; font-size: 13px; outline: none; caret-color: var(--accent); }
+      .settings input:focus { border-color: rgba(212,255,0,0.4); }
+      .srow { display: flex; align-items: center; gap: 14px; margin-top: 6px; }
+      .save { background: var(--accent); color: #0a0a0a; border: none; border-radius: 6px;
+        padding: 7px 16px; font: inherit; font-size: 12px; font-weight: 500;
+        text-transform: lowercase; letter-spacing: 0.08em; cursor: pointer; }
+      .save:hover { filter: brightness(1.08); }
+      .shint { color: var(--dim); font-size: 11px; }
+
       .grip { position: fixed; right: 4px; bottom: 4px; width: 12px; height: 12px;
         cursor: nwse-resize; -webkit-app-region: no-drag; opacity: 0.35;
         background: linear-gradient(135deg, transparent 55%, var(--fg) 55% 62%,

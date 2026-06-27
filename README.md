@@ -33,9 +33,12 @@ npm start
 | key       | what it does                                                |
 | --------- | ----------------------------------------------------------- |
 | `⌘ I`     | open the prompt. If results are visible, opens a follow-up referencing the active option. |
+| `⌘ S`     | open settings (provider base URL, API key, model). Window-scoped — overlay must be open.   |
 | `⌘ 1..9`  | switch between rendered options                                                            |
 | `⌘ C`     | copy the active option (defers to native copy if you have text selected)                   |
 | `esc`     | hide the overlay                                                                           |
+
+Settings are saved to `<userData>/viking-settings.json` (plaintext API key) and override the env vars after first save.
 
 Edit hotkeys in `src/config.ts`.
 
