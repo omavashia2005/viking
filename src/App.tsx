@@ -48,19 +48,6 @@ export default function App(): JSX.Element {
 
   useEffect(() => { window.viking.setActive(active); }, [active]);
 
-  // Grow window to fit the rendered code, capped in main.
-  useEffect(() => {
-    if (phase !== 'results' || !current) return;
-    requestAnimationFrame(() => {
-      const bar = document.querySelector('.bar') as HTMLElement | null;
-      const head = document.querySelector('.codehead') as HTMLElement | null;
-      const code = document.querySelector('.code') as HTMLElement | null;
-      if (!code) return;
-      const want = (bar?.offsetHeight ?? 36) + (head?.offsetHeight ?? 36) + code.scrollHeight + 24;
-      window.viking.resize(want);
-    });
-  }, [phase, active, highlighted]);
-
   useEffect(() => {
     const onKey = async (e: KeyboardEvent) => {
       if (e.key === 'Escape') return window.viking.hide();
@@ -91,6 +78,19 @@ export default function App(): JSX.Element {
         : hljs.highlightAuto(current.code).value;
     } catch { return current.code; }
   }, [current]);
+
+  // Grow window to fit the rendered code, capped in main.
+  useEffect(() => {
+    if (phase !== 'results' || !current) return;
+    requestAnimationFrame(() => {
+      const bar = document.querySelector('.bar') as HTMLElement | null;
+      const head = document.querySelector('.codehead') as HTMLElement | null;
+      const code = document.querySelector('.code') as HTMLElement | null;
+      if (!code) return;
+      const want = (bar?.offsetHeight ?? 36) + (head?.offsetHeight ?? 36) + code.scrollHeight + 24;
+      window.viking.resize(want);
+    });
+  }, [phase, active, highlighted, current]);
 
   if (phase === 'hidden') return <div style={{ display: 'none' }} />;
 
