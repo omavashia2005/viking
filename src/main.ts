@@ -2,32 +2,37 @@ import { app, BrowserWindow, globalShortcut, ipcMain, screen, desktopCapturer, n
 import path from 'node:path';
 import { config } from './config';
 import { generate } from './llm';
+import type { Option } from './shared-types';
 
 let win: BrowserWindow | null = null;
+let lastOptions: Option[] = [];
+let activeIdx = 0;
+let mode: 'spotlight' | 'full' = 'full';
+
+const SIZES = {
+  spotlight: { w: 600, h: 64, y: 80 },
+  full: { w: 720, h: 460, y: 16 },
+};
+
+// Resize only when switching modes; if the user dragged the window bigger in 'full', keep it.
+function setMode(next: 'spotlight' | 'full'): void {
+  if (!win || mode === next) return;
+  mode = next;
+  const { width } = screen.getPrimaryDisplay().workAreaSize;
+  const { w, h, y } = SIZES[next];
+  win.setBounds({ x: Math.round((width - w) / 2), y, width: w, height: h });
+}
 
 function createWindow(): BrowserWindow {
   const { width } = screen.getPrimaryDisplay().workAreaSize;
-  const w = 720, h = 460;
+  const { w, h, y } = SIZES.full;
   const w0 = new BrowserWindow({
-    width: w,
-    height: h,
-    minWidth: 420,
-    minHeight: 200,
-    x: Math.round((width - w) / 2),
-    y: 16, // pinned to top center; drag the header bar to move, edges to resize
-    transparent: true,
-    frame: false,
-    resizable: true,
-    movable: true,
-    alwaysOnTop: true,
-    skipTaskbar: true,
-    hasShadow: false,
-    show: false,
+    width: w, height: h, minWidth: 420, minHeight: 64,
+    x: Math.round((width - w) / 2), y,
+    transparent: true, frame: false, resizable: true, movable: true,
+    alwaysOnTop: true, skipTaskbar: true, hasShadow: false, show: false,
     vibrancy: 'under-window',
-    webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
-      contextIsolation: true,
-    },
+    webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true },
   });
   w0.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
   w0.setAlwaysOnTop(true, 'screen-saver');
@@ -41,23 +46,24 @@ async function captureScreen(): Promise<string | undefined> {
     const sources = await desktopCapturer.getSources({ types: ['screen'], thumbnailSize: { width, height } });
     const img = sources[0]?.thumbnail;
     if (!img || img.isEmpty()) return undefined;
-    // ponytail: full-screen JPEG @ 70%. Shrink/crop if token cost matters.
     return nativeImage.createFromBuffer(img.toJPEG(70)).toDataURL();
-  } catch {
-    return undefined;
-  }
+  } catch { return undefined; }
 }
 
-function show(mode: 'textbox' | 'direct'): void {
+function show(mode: 'textbox' | 'direct' | 'followup', refineFrom?: Option): void {
   if (!win) win = createWindow();
+  setMode(mode === 'direct' ? 'full' : 'spotlight');
   win.showInactive();
   win.focus();
-  win.webContents.send('viking:show', { mode });
+  win.webContents.send('viking:show', { mode, refineFrom });
 }
 
 function hide(): void {
   win?.hide();
   win?.webContents.send('viking:reset');
+  lastOptions = [];
+  activeIdx = 0;
+  mode = 'full';
 }
 
 function friendly(err: Error): string {
@@ -71,11 +77,24 @@ function friendly(err: Error): string {
   return m;
 }
 
-async function run(userPrompt: string | undefined): Promise<void> {
+function buildPrompt(prompt: string | undefined, refineFrom?: Option): string | undefined {
+  if (!refineFrom) return prompt;
+  return [
+    `Refining a previous suggestion.`,
+    `Previous (${refineFrom.label}, ${refineFrom.language}):`,
+    '```' + refineFrom.language, refineFrom.code, '```',
+    `Follow-up from user: ${prompt ?? '(none — re-derive from screenshot)'}`,
+  ].join('\n');
+}
+
+async function run(prompt: string | undefined, refineFrom?: Option): Promise<void> {
+  setMode('full');
   win?.webContents.send('viking:loading');
   const screenshot = await captureScreen();
   try {
-    const options = await generate(userPrompt, screenshot);
+    const options = await generate(buildPrompt(prompt, refineFrom), screenshot);
+    lastOptions = options;
+    activeIdx = 0;
     win?.webContents.send('viking:result', { options });
   } catch (e) {
     win?.webContents.send('viking:result', { options: [], error: friendly(e as Error) });
@@ -85,11 +104,15 @@ async function run(userPrompt: string | undefined): Promise<void> {
 app.whenReady().then(() => {
   win = createWindow();
 
-  globalShortcut.register(config.hotkeys.direct, () => { show('direct'); run(undefined); });
+  globalShortcut.register(config.hotkeys.direct, () => {
+    if (lastOptions.length && win?.isVisible()) show('followup', lastOptions[activeIdx]);
+    else { show('direct'); run(undefined); }
+  });
   globalShortcut.register(config.hotkeys.withTextbox, () => show('textbox'));
   globalShortcut.register(config.hotkeys.close, hide);
 
-  ipcMain.on('viking:submit', (_e, prompt: string) => run(prompt));
+  ipcMain.on('viking:submit', (_e, payload: { prompt: string; refineFrom?: Option }) => run(payload.prompt, payload.refineFrom));
+  ipcMain.on('viking:setActive', (_e, idx: number) => { activeIdx = idx; });
   ipcMain.on('viking:hide', hide);
 });
 
