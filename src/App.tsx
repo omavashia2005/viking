@@ -47,16 +47,24 @@ export default function App(): JSX.Element {
   useEffect(() => { window.viking.setActive(active); }, [active]);
 
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
+    const onKey = async (e: KeyboardEvent) => {
       if (e.key === 'Escape') return window.viking.hide();
-      if ((e.metaKey || e.ctrlKey) && /^[1-9]$/.test(e.key)) {
+      const mod = e.metaKey || e.ctrlKey;
+      if (mod && /^[1-9]$/.test(e.key)) {
         const i = +e.key - 1;
         if (i < options.length) setActive(i);
+        return;
+      }
+      if (mod && e.key.toLowerCase() === 'c' && options[active]) {
+        if (window.getSelection()?.toString()) return; // user is doing a real copy
+        e.preventDefault();
+        await navigator.clipboard.writeText(options[active].code);
+        setCopied(true); setTimeout(() => setCopied(false), 1400);
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [options]);
+  }, [options, active]);
 
   const current = options[active];
   const highlighted = useMemo(() => {
@@ -117,7 +125,7 @@ export default function App(): JSX.Element {
         <div className="codewrap">
           <div className="codehead">
             <span className="lang">{current.language}</span>
-            <span className="copyhint">{copied ? '✓ copied' : 'click code to copy'}</span>
+            <span className="copyhint">{copied ? '✓ copied' : 'click or ⌘C to copy'}</span>
           </div>
           <pre
             className="code"

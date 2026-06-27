@@ -7,6 +7,7 @@ export const config = {
     withTextbox: 'CommandOrControl+I',
     direct: 'CommandOrControl+Shift+I',
     close: 'Escape',
+    copy: 'c', // window-scoped: ⌘/Ctrl + this key copies the active option
   },
   // Any OpenAI-schema-compatible endpoint. Override via env.
   llm: {
