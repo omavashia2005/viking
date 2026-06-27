@@ -79,7 +79,13 @@ export default function App(): JSX.Element {
       )}
       {phase === 'loading' && <div className="loading pulse">thinking</div>}
       {phase === 'results' && current && <pre className="code"><code>{current.code}</code></pre>}
-      {phase === 'error' && <div className="errbody">{error}</div>}
+      {phase === 'error' && (
+        <div className="errbody">
+          <div className="errhead">something went wrong</div>
+          <div className="errmsg">{error}</div>
+          <div className="errhint">press esc to dismiss · then retry with ⌘I or ⌘⇧I</div>
+        </div>
+      )}
     </div>
   );
 }

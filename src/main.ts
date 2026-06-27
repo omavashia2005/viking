@@ -57,6 +57,17 @@ function hide(): void {
   win?.webContents.send('viking:reset');
 }
 
+function friendly(err: Error): string {
+  const m = err.message ?? String(err);
+  if (!config.llm.apiKey) return 'No API key. Set LLM_API_KEY (or OPENAI_API_KEY) in your shell and restart.';
+  if (/ENOENT/.test(m) && /fff-mcp/.test(m)) return `fff-mcp not found at ${config.mcp.fff.command}. Install it, or edit src/config.ts → mcp.fff.command.`;
+  if (/401|invalid_api_key|Incorrect API key/i.test(m)) return 'API key was rejected. Check LLM_API_KEY and LLM_BASE_URL match the same provider.';
+  if (/ENOTFOUND|ECONNREFUSED|fetch failed/i.test(m)) return `Could not reach ${config.llm.baseURL}. Check the URL and your connection.`;
+  if (/model.+(not_found|does not exist)/i.test(m)) return `Model "${config.llm.model}" not available on this endpoint. Set LLM_MODEL to one your provider supports.`;
+  if (/ZodError|Invalid|Expected/.test(m)) return 'Model returned malformed output. Try again, or switch LLM_MODEL to a stronger model.';
+  return m;
+}
+
 async function run(userPrompt: string | undefined): Promise<void> {
   win?.webContents.send('viking:loading');
   const screenshot = await captureScreen();
@@ -64,7 +75,7 @@ async function run(userPrompt: string | undefined): Promise<void> {
     const options = await generate(userPrompt, screenshot);
     win?.webContents.send('viking:result', { options });
   } catch (e) {
-    win?.webContents.send('viking:result', { options: [], error: (e as Error).message });
+    win?.webContents.send('viking:result', { options: [], error: friendly(e as Error) });
   }
 }
 

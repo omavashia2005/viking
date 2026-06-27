@@ -48,7 +48,13 @@
         line-height: 1.55; white-space: pre; -webkit-app-region: no-drag; user-select: text; }
       .code::-webkit-scrollbar { width: 8px; height: 8px; }
       .code::-webkit-scrollbar-thumb { background: rgba(244,241,234,0.12); border-radius: 4px; }
-      .errbody { padding: 22px; color: #ff9b9b; white-space: pre-wrap; font-size: 12px; }
+      .errbody { flex: 1; padding: 28px 26px; display: flex; flex-direction: column;
+        gap: 12px; -webkit-app-region: no-drag; user-select: text; }
+      .errhead { color: #ff7676; font-size: 11px; letter-spacing: 0.18em;
+        text-transform: uppercase; }
+      .errmsg { color: var(--fg); font-size: 15px; font-weight: 300; line-height: 1.5;
+        white-space: pre-wrap; }
+      .errhint { color: var(--dim); font-size: 11px; margin-top: auto; }
     </style>
   </head>
   <body><div id="root"></div><script src="../dist/renderer.js"></script></body>
