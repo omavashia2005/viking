@@ -27,7 +27,12 @@ export default function App(): JSX.Element {
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
+    if (!window.viking) {
+      console.error('[viking] preload bridge missing — window.viking is undefined. Check preload path / contextIsolation.');
+      return;
+    }
     window.viking.on('viking:show', ({ mode, refineFrom }: { mode: 'textbox' | 'followup'; refineFrom?: Option }) => {
+      console.log('[viking] show', mode);
       setError(''); setPrompt(''); setCopied(false);
       setPhase('textbox');
       setRefineFrom(mode === 'followup' ? refineFrom : undefined);

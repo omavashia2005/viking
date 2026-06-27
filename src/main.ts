@@ -37,6 +37,11 @@ function createWindow(): BrowserWindow {
   w0.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
   w0.setAlwaysOnTop(true, 'screen-saver');
   w0.loadFile('public/index.html');
+  // ponytail: devtools on by default until the renderer reliably mounts; gate with `VIKING_DEVTOOLS=0` later.
+  if (process.env.VIKING_DEVTOOLS !== '0') w0.webContents.openDevTools({ mode: 'detach' });
+  w0.webContents.on('render-process-gone', (_e, d) => console.error('[viking] renderer gone:', d));
+  w0.webContents.on('preload-error', (_e, p, err) => console.error('[viking] preload error:', p, err));
+  w0.webContents.on('did-fail-load', (_e, code, desc) => console.error('[viking] load failed:', code, desc));
   return w0;
 }
 
