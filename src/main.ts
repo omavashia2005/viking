@@ -113,6 +113,13 @@ app.whenReady().then(() => {
 
   ipcMain.on('viking:submit', (_e, payload: { prompt: string; refineFrom?: Option }) => run(payload.prompt, payload.refineFrom));
   ipcMain.on('viking:setActive', (_e, idx: number) => { activeIdx = idx; });
+  ipcMain.on('viking:resize', (_e, height: number) => {
+    if (!win) return;
+    const b = win.getBounds();
+    if (height <= b.height) return; // only grow — preserves user-resize
+    const max = screen.getPrimaryDisplay().workAreaSize.height - 40;
+    win.setBounds({ ...b, height: Math.min(Math.ceil(height), max) });
+  });
   ipcMain.on('viking:hide', hide);
 });
 

@@ -8,6 +8,7 @@ declare global {
       on: (ch: string, fn: (...a: any[]) => void) => void;
       submit: (p: { prompt: string; refineFrom?: Option }) => void;
       setActive: (idx: number) => void;
+      resize: (height: number) => void;
       hide: () => void;
     };
   }
@@ -23,7 +24,7 @@ export default function App(): JSX.Element {
   const [error, setError] = useState('');
   const [refineFrom, setRefineFrom] = useState<Option | undefined>();
   const [copied, setCopied] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     window.viking.on('viking:show', ({ mode, refineFrom }: { mode: 'textbox' | 'direct' | 'followup'; refineFrom?: Option }) => {
@@ -45,6 +46,19 @@ export default function App(): JSX.Element {
   }, []);
 
   useEffect(() => { window.viking.setActive(active); }, [active]);
+
+  // Grow window to fit the rendered code, capped in main.
+  useEffect(() => {
+    if (phase !== 'results' || !current) return;
+    requestAnimationFrame(() => {
+      const bar = document.querySelector('.bar') as HTMLElement | null;
+      const head = document.querySelector('.codehead') as HTMLElement | null;
+      const code = document.querySelector('.code') as HTMLElement | null;
+      if (!code) return;
+      const want = (bar?.offsetHeight ?? 36) + (head?.offsetHeight ?? 36) + code.scrollHeight + 24;
+      window.viking.resize(want);
+    });
+  }, [phase, active, highlighted]);
 
   useEffect(() => {
     const onKey = async (e: KeyboardEvent) => {
@@ -81,6 +95,11 @@ export default function App(): JSX.Element {
 
   // Spotlight layout for textbox / follow-up phase
   if (phase === 'textbox') {
+    const growTextarea = (el: HTMLTextAreaElement) => {
+      el.style.height = 'auto';
+      el.style.height = `${el.scrollHeight}px`;
+      window.viking.resize(el.scrollHeight + 48);
+    };
     return (
       <div className="spot">
         <form
@@ -91,9 +110,21 @@ export default function App(): JSX.Element {
           }}
         >
           <span className="caret">›</span>
-          <input ref={inputRef} value={prompt} onChange={e => setPrompt(e.target.value)}
+          <textarea
+            ref={inputRef}
+            value={prompt}
+            onChange={e => { setPrompt(e.target.value); growTextarea(e.target); }}
+            onKeyDown={e => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                if (prompt.trim()) window.viking.submit({ prompt: prompt.trim(), refineFrom });
+              }
+            }}
+            rows={1}
             placeholder={refineFrom ? `refine "${refineFrom.label}"…` : 'how do I…'}
-            spellCheck={false} autoFocus />
+            spellCheck={false}
+            autoFocus
+          />
           {refineFrom && <span className="chip">↻ {refineFrom.language}</span>}
         </form>
       </div>
