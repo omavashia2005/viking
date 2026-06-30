@@ -3,7 +3,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { ides } from './ides';
 
-const REPO_ROOT = path.resolve(__dirname, '..', '..');
+// __dirname at runtime is the bundled output dir (dist/); repo root is its parent.
+const REPO_ROOT = path.resolve(__dirname, '..');
 const GUARD_START = '-- >>> viking';
 const GUARD_END = '-- <<< viking';
 
