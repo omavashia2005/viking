@@ -35,10 +35,21 @@ vim.api.nvim_create_autocmd('VimLeavePre', { group = group, callback = function(
   if M.state == 'received' then M.state = 'quit' end
 end })
 
+-- Invoke the binary directly (not `open -a`) so Electron's single-instance
+-- lock observes the second invocation and routes its argv via 'second-instance'.
+-- `open -a` on macOS reuses the running process without re-entering main().
+local function binary_path()
+  local app = M.app_path
+  if app:sub(-4) == '.app' then
+    return app .. '/Contents/MacOS/' .. vim.fn.fnamemodify(app, ':t:r')
+  end
+  return app
+end
+
 vim.keymap.set('i', M.keymap, function()
   if M.state ~= 'received' then return end
   -- detach so the child outlives nvim; jobstart with a list argv avoids shell quoting.
-  vim.fn.jobstart({ 'open', '-a', M.app_path, '--args', vim.fn.getcwd(), vim.fn.expand('%:p') }, { detach = true })
+  vim.fn.jobstart({ binary_path(), '--args', vim.fn.getcwd(), vim.fn.expand('%:p') }, { detach = true })
 end, { desc = 'viking: send cwd + filename to app' })
 
 return M

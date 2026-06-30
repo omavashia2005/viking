@@ -3,7 +3,29 @@ import path from 'node:path';
 import fs from 'node:fs';
 import { config } from './config';
 import { generate } from './llm';
-import type { Option } from './shared-types';
+import type { Option, LaunchArgs } from './shared-types';
+
+// Caller passes the payload after '--args'. Chromium/Electron may inject its
+// own flags between '--args' and our payload, so skip flag-shaped tokens and
+// take the trailing two positionals.
+function parseLaunchArgs(argv: string[]): LaunchArgs {
+  const i = argv.indexOf('--args');
+  const pool = i >= 0 ? argv.slice(i + 1) : argv;
+  const tail = pool.filter(a => !a.startsWith('-')).slice(-2);
+  return { cwd: tail[0], activeFile: tail[1] };
+}
+
+let currentLaunch: LaunchArgs = parseLaunchArgs(process.argv);
+console.log('[viking] launch args:', currentLaunch);
+
+if (!app.requestSingleInstanceLock()) {
+  app.quit();
+} else {
+  app.on('second-instance', (_e, argv) => {
+    currentLaunch = parseLaunchArgs(argv);
+    console.log('[viking] launch args:', currentLaunch);
+  });
+}
 
 const settingsFile = () => path.join(app.getPath('userData'), 'viking-settings.json');
 // ponytail: plaintext api key on disk under the user's app data. Swap for keytar if shared machines matter.
