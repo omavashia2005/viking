@@ -46,8 +46,8 @@ local function binary_path()
   return app
 end
 
-vim.keymap.set('i', M.keymap, function()
-  if M.state ~= 'received' then return end
+-- Bound in insert + normal so the user can fire from either; state machine becomes advisory.
+vim.keymap.set({ 'i', 'n' }, M.keymap, function()
   -- detach so the child outlives nvim; jobstart with a list argv avoids shell quoting.
   vim.fn.jobstart({ binary_path(), '--args', vim.fn.getcwd(), vim.fn.expand('%:p') }, { detach = true })
 end, { desc = 'viking: send cwd + filename to app' })
