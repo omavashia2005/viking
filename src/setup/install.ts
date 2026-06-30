@@ -2,6 +2,7 @@ import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { ides } from './ides';
+import pluginTemplate from './ides/neovim.plugin.lua';
 
 // __dirname at runtime is the bundled output dir (dist/); repo root is its parent.
 const REPO_ROOT = path.resolve(__dirname, '..');
@@ -34,22 +35,9 @@ function resolveAppPath(): string {
 }
 
 function renderStub(appPath: string, keymap: string): string {
-  return `-- Viking plugin (managed by viking setup; safe to edit but constants are read by the setup script).
-local M = {}
-
--- >>> viking-constants (do not edit by hand)
-M.app_path = '${appPath}'
-M.keymap   = '${keymap}'
--- <<< viking-constants
-
--- Stub: Agent C fills in the state machine + send action here.
--- For now, register a no-op keymap so setup is testable end-to-end.
-vim.keymap.set('i', M.keymap, function()
-  vim.notify('viking: not wired yet (Agent C TODO)', vim.log.levels.INFO)
-end, { desc = 'viking: send cwd + filename to app (stub)' })
-
-return M
-`;
+  return pluginTemplate
+    .replace('__APP_PATH__', appPath)
+    .replace('__KEYMAP__', keymap);
 }
 
 function patchInit(entryFile: string, entryRequire: string): void {
