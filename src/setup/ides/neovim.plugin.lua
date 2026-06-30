@@ -6,9 +6,39 @@ M.app_path = '__APP_PATH__'
 M.keymap   = '__KEYMAP__'
 -- <<< viking-constants
 
--- Stub: state machine + send action implemented in subtask 2.
+M.state = 'opened'
+local seen = {}
+local seen_count = 0
+
+local function on_buf_enter()
+  -- buftype == '' filters out quickfix, help, terminal, prompt buffers.
+  if vim.bo.buftype ~= '' then return end
+  local name = vim.api.nvim_buf_get_name(0)
+  if name == '' then return end
+  if not seen[name] then
+    seen[name] = true
+    seen_count = seen_count + 1
+  end
+  M.state = seen_count >= 2 and 'multiple files open' or 'opened'
+end
+
+-- Dedicated augroup so re-sourcing the file doesn't stack autocmds.
+local group = vim.api.nvim_create_augroup('viking', { clear = true })
+
+vim.api.nvim_create_autocmd('BufEnter',    { group = group, callback = on_buf_enter })
+vim.api.nvim_create_autocmd('InsertEnter', { group = group, callback = function() M.state = 'received' end })
+vim.api.nvim_create_autocmd('InsertLeave', { group = group, callback = function()
+  if M.state == 'received' then M.state = 'escaped' end
+end })
+-- VimLeavePre runs before the process exits; VimLeave is too late for any user-visible work.
+vim.api.nvim_create_autocmd('VimLeavePre', { group = group, callback = function()
+  if M.state == 'received' then M.state = 'quit' end
+end })
+
 vim.keymap.set('i', M.keymap, function()
-  vim.notify('viking: not wired yet', vim.log.levels.INFO)
-end, { desc = 'viking: send cwd + filename to app (stub)' })
+  if M.state ~= 'received' then return end
+  -- detach so the child outlives nvim; jobstart with a list argv avoids shell quoting.
+  vim.fn.jobstart({ 'open', '-a', M.app_path, '--args', vim.fn.getcwd(), vim.fn.expand('%:p') }, { detach = true })
+end, { desc = 'viking: send cwd + filename to app' })
 
 return M
