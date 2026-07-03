@@ -24,6 +24,7 @@ if (!app.requestSingleInstanceLock()) {
   app.on('second-instance', (_e, argv) => {
     currentLaunch = parseLaunchArgs(argv);
     console.log('[viking] launch args:', currentLaunch);
+    if (currentLaunch.cwd) show('textbox');
   });
 }
 
@@ -155,6 +156,8 @@ app.whenReady().then(() => {
   });
   registerOpen();
   // close is window-scoped (handled in renderer keydown) — registering 'q' globally would steal it system-wide.
+
+  if (currentLaunch.cwd) show('textbox');
 
   ipcMain.on('viking:submit', (_e, payload: { prompt: string; refineFrom?: Option }) => run(payload.prompt, payload.refineFrom));
   ipcMain.on('viking:setActive', (_e, idx: number) => { activeIdx = idx; });
