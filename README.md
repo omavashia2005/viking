@@ -1,4 +1,4 @@
-# viking
+# [WIP] viking
 
 Floating overlay that shows 3–4 ways to write the snippet you're asking for.
 Pulls live context from Context7 (language docs) and `fff-mcp` (codebase grep),
