@@ -10,8 +10,8 @@ import type { Option, LaunchArgs } from './shared-types';
 // take the trailing two positionals.
 function parseLaunchArgs(argv: string[]): LaunchArgs {
   const i = argv.indexOf('--args');
-  const pool = i >= 0 ? argv.slice(i + 1) : argv;
-  const tail = pool.filter(a => !a.startsWith('-')).slice(-2);
+  if (i < 0) return {};
+  const tail = argv.slice(i + 1).filter(a => !a.startsWith('-')).slice(-2);
   return { cwd: tail[0], activeFile: tail[1] };
 }
 
