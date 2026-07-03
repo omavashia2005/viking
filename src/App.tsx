@@ -194,6 +194,7 @@ export default function App(): JSX.Element {
         <div className="codewrap">
           <div className="codehead">
             <span className="lang">{current.language}</span>
+            {current.file && <span className="file" title={current.file}>{current.file.split('/').pop()}</span>}
             <span className="copyhint">{copied ? '✓ copied' : 'click or ⌘C to copy'}</span>
           </div>
           <pre

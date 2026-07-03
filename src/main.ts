@@ -137,7 +137,7 @@ async function run(prompt: string | undefined, refineFrom?: Option): Promise<voi
   win?.webContents.send('viking:loading');
   const screenshot = await captureScreen();
   try {
-    const options = await generate(buildPrompt(prompt, refineFrom), screenshot);
+    const options = await generate(buildPrompt(prompt, refineFrom), screenshot, currentLaunch);
     lastOptions = options;
     activeIdx = 0;
     win?.webContents.send('viking:result', { options });
