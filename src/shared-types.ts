@@ -14,6 +14,7 @@ export const Option = z.object({
   language: z.string(), // hljs-style lang id: "typescript", "python", "rust", etc.
   code: z.string(),
   file: z.string(),     // path where this snippet belongs; default to the active file if unsure
+  startLine: z.number().int().min(1).optional(), // 1-based line in `file` where the snippet is inserted
 });
 export type Option = z.infer<typeof Option>;
 

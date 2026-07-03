@@ -104,14 +104,18 @@ export default function App(): JSX.Element {
   }, [options, active]);
 
   const current = options[active];
-  const highlighted = useMemo(() => {
-    if (!current) return '';
+  const highlightedLines = useMemo(() => {
+    if (!current) return [] as string[];
+    let html = current.code;
     try {
       const lang = current.language && hljs.getLanguage(current.language) ? current.language : undefined;
-      return lang
+      html = lang
         ? hljs.highlight(current.code, { language: lang, ignoreIllegals: true }).value
         : hljs.highlightAuto(current.code).value;
-    } catch { return current.code; }
+    } catch {}
+    // ponytail: naive split — a multi-line hljs span (block comment, template string) can bleed styling
+    // across the newline. Swap for per-line highlighting if visible in real snippets.
+    return html.split('\n');
   }, [current]);
 
   // Grow window to fit the rendered code, capped in main.
@@ -125,7 +129,7 @@ export default function App(): JSX.Element {
       const want = (bar?.offsetHeight ?? 36) + (head?.offsetHeight ?? 36) + code.scrollHeight + 24;
       window.viking.resize(want);
     });
-  }, [phase, active, highlighted, current]);
+  }, [phase, active, highlightedLines, current]);
 
   if (phase === 'hidden') return <div style={{ display: 'none' }} />;
 
@@ -194,7 +198,11 @@ export default function App(): JSX.Element {
         <div className="codewrap">
           <div className="codehead">
             <span className="lang">{current.language}</span>
-            {current.file && <span className="file" title={current.file}>{current.file.split('/').pop()}</span>}
+            {current.file && (
+              <span className="file" title={current.file}>
+                {current.file.split('/').pop()}{current.startLine ? `:${current.startLine}` : ''}
+              </span>
+            )}
             <span className="copyhint">{copied ? '✓ copied' : 'click or ⌘C to copy'}</span>
           </div>
           <pre
@@ -205,7 +213,16 @@ export default function App(): JSX.Element {
               await navigator.clipboard.writeText(current.code);
               setCopied(true); setTimeout(() => setCopied(false), 1400);
             }}
-          ><code dangerouslySetInnerHTML={{ __html: highlighted }} /></pre>
+          >
+            <code>
+              {highlightedLines.map((line, i) => (
+                <div key={i} className="ln">
+                  <span className="gutter">{(current.startLine ?? 1) + i}</span>
+                  <span className="lc" dangerouslySetInnerHTML={{ __html: line || ' ' }} />
+                </div>
+              ))}
+            </code>
+          </pre>
         </div>
       )}
 

@@ -73,7 +73,11 @@
         contain: paint; transform: translateZ(0); will-change: scroll-position;
         overscroll-behavior: contain; scrollbar-gutter: stable; }
       .code:hover ~ .codehead .copyhint, .codewrap:hover .copyhint { color: var(--fg); }
-      .code code.hljs, .code code { background: transparent !important; padding: 0; }
+      .code code.hljs, .code code { background: transparent !important; padding: 0; display: block; }
+      .ln { display: grid; grid-template-columns: 2.5em 1fr; column-gap: 14px; }
+      .gutter { color: var(--dim); opacity: 0.45; text-align: right; user-select: none;
+        font-variant-numeric: tabular-nums; -webkit-user-select: none; }
+      .lc { white-space: pre-wrap; word-break: break-word; min-width: 0; }
       /* shared scrollbar treatment — thinner, less paint-heavy */
       .code::-webkit-scrollbar, .settings::-webkit-scrollbar, .prompt textarea::-webkit-scrollbar { width: 6px; height: 6px; }
       .code::-webkit-scrollbar-track, .settings::-webkit-scrollbar-track, .prompt textarea::-webkit-scrollbar-track { background: transparent; }
