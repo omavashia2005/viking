@@ -5,7 +5,10 @@
   "scripts": {
     "start": "npm run build && concurrently \"npm run watch\" \"electron .\"",
     "watch": "concurrently \"esbuild src/main.ts --bundle --platform=node --external:electron --outfile=dist/main.js --format=cjs --watch\" \"esbuild src/preload.ts --bundle --platform=node --external:electron --outfile=dist/preload.js --format=cjs --watch\" \"esbuild src/index.tsx --bundle --outfile=dist/renderer.js --watch --loader:.js=jsx --define:process.env.NODE_ENV='\\\"development\\\"'\"",
-    "build": "esbuild src/main.ts --bundle --platform=node --external:electron --outfile=dist/main.js --format=cjs && esbuild src/preload.ts --bundle --platform=node --external:electron --outfile=dist/preload.js --format=cjs && esbuild src/index.tsx --bundle --outfile=dist/renderer.js --loader:.js=jsx --define:process.env.NODE_ENV='\"development\"'"
+    "build": "esbuild src/main.ts --bundle --platform=node --external:electron --outfile=dist/main.js --format=cjs && esbuild src/preload.ts --bundle --platform=node --external:electron --outfile=dist/preload.js --format=cjs && esbuild src/index.tsx --bundle --outfile=dist/renderer.js --loader:.js=jsx --define:process.env.NODE_ENV='\"development\"'",
+    "dist": "npm run build && electron-builder --mac --dir",
+    "setup:build": "esbuild src/setup/install.ts --bundle --platform=node --loader:.lua=text --outfile=dist/setup.js --format=cjs",
+    "setup": "npm run setup:build && node dist/setup.js"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.4",
@@ -22,7 +25,24 @@
     "@types/react-dom": "^18.2.0",
     "concurrently": "^8.2.0",
     "electron": "^27.0.0",
+    "electron-builder": "^24.13.3",
     "esbuild": "^0.19.0",
     "typescript": "^5.0.0"
+  },
+  "build": {
+    "appId": "com.viking.app",
+    "productName": "Viking",
+    "files": [
+      "dist/**",
+      "public/**",
+      "package.json"
+    ],
+    "mac": {
+      "target": "dir",
+      "category": "public.app-category.developer-tools"
+    },
+    "directories": {
+      "output": "release"
+    }
   }
 }

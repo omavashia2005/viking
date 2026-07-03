@@ -18,3 +18,9 @@ export type Option = z.infer<typeof Option>;
 
 export const LLMResponse = z.object({ options: z.array(Option).min(1).max(6) });
 export type LLMResponse = z.infer<typeof LLMResponse>;
+
+export const LaunchArgs = z.object({
+  cwd: z.string().optional(),
+  activeFile: z.string().optional(),
+});
+export type LaunchArgs = z.infer<typeof LaunchArgs>;
