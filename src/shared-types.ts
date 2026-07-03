@@ -13,6 +13,7 @@ export const Option = z.object({
   label: z.string(),    // 1-3 word approach name
   language: z.string(), // hljs-style lang id: "typescript", "python", "rust", etc.
   code: z.string(),
+  file: z.string(),     // path where this snippet belongs; default to the active file if unsure
 });
 export type Option = z.infer<typeof Option>;
 

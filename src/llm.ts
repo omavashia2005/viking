@@ -7,17 +7,21 @@ import { config } from './config';
 import { Context, LLMResponse, type LaunchArgs, type Option } from './shared-types';
 import { prompts } from './prompts';
 
-async function mcpCall(spec: { command: string; args: string[] }, tool: string, args: Record<string, unknown>): Promise<string> {
+async function openMcp(spec: { command: string; args: string[] }): Promise<Client> {
   const client = new Client({ name: 'viking', version: '0.1.0' });
-  const transport = new StdioClientTransport({ command: spec.command, args: spec.args });
-  await client.connect(transport);
-  try {
-    const res = await client.callTool({ name: tool, arguments: args });
-    const content = (res.content as Array<{ type: string; text?: string }>) ?? [];
-    return content.filter(c => c.type === 'text').map(c => c.text ?? '').join('\n');
-  } finally {
-    await client.close();
-  }
+  await client.connect(new StdioClientTransport({ command: spec.command, args: spec.args }));
+  return client;
+}
+
+async function callTool(client: Client, tool: string, args: Record<string, unknown>): Promise<string> {
+  const res = await client.callTool({ name: tool, arguments: args });
+  const content = (res.content as Array<{ type: string; text?: string }>) ?? [];
+  return content.filter(c => c.type === 'text').map(c => c.text ?? '').join('\n');
+}
+
+async function mcpCall(spec: { command: string; args: string[] }, tool: string, args: Record<string, unknown>): Promise<string> {
+  const client = await openMcp(spec);
+  try { return await callTool(client, tool, args); } finally { await client.close(); }
 }
 
 const TOOLS: OpenAI.Chat.ChatCompletionTool[] = [
@@ -25,14 +29,11 @@ const TOOLS: OpenAI.Chat.ChatCompletionTool[] = [
     type: 'function',
     function: {
       name: 'grep_codebase',
-      description: "Search the user's codebase for a bare identifier or short substring. Returns matching lines with file paths.",
+      description: "Search the user's codebase file contents. Query is a BARE identifier or literal substring — no regex. Prepend a constraint for scope: '*.ts query', 'src/ query', '!test/ query'.",
       parameters: {
         type: 'object',
-        properties: {
-          pattern: { type: 'string', description: 'Bare identifier or literal substring; not a regex.' },
-          path: { type: 'string', description: 'Optional subpath; defaults to project root.' },
-        },
-        required: ['pattern'],
+        properties: { query: { type: 'string' } },
+        required: ['query'],
       },
     },
   },
@@ -40,11 +41,39 @@ const TOOLS: OpenAI.Chat.ChatCompletionTool[] = [
     type: 'function',
     function: {
       name: 'find_files',
-      description: "Find files in the user's codebase by name or fragment.",
+      description: "Fuzzy file-name search in the user's codebase. Keep query to 1-2 short terms; supports glob constraints e.g. 'name **/src/*.{ts,tsx}'.",
       parameters: {
         type: 'object',
-        properties: { pattern: { type: 'string' } },
-        required: ['pattern'],
+        properties: { query: { type: 'string' } },
+        required: ['query'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'read_file',
+      description: "Read a file from the user's codebase. Prefer this after grep_codebase points to a definition. Returns the requested line range (defaults to whole file, capped at 400 lines).",
+      parameters: {
+        type: 'object',
+        properties: {
+          path: { type: 'string', description: 'Absolute or repo-relative path.' },
+          startLine: { type: 'number' },
+          endLine: { type: 'number' },
+        },
+        required: ['path'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'resolve_library_id',
+      description: "REQUIRED before get_library_docs. Resolve a plain library name (e.g. 'react', 'zod') to the context7 library id.",
+      parameters: {
+        type: 'object',
+        properties: { libraryName: { type: 'string' } },
+        required: ['libraryName'],
       },
     },
   },
@@ -52,26 +81,35 @@ const TOOLS: OpenAI.Chat.ChatCompletionTool[] = [
     type: 'function',
     function: {
       name: 'get_library_docs',
-      description: 'Fetch documentation snippets for a library on a specific topic.',
+      description: "Fetch docs for a topic. libraryId MUST be from resolve_library_id (format '/org/lib' or '/org/lib/version'). Never pass a bare name.",
       parameters: {
         type: 'object',
         properties: {
-          library: { type: 'string', description: 'context7 library id, e.g. microsoft/typescript' },
+          libraryId: { type: 'string' },
           topic: { type: 'string' },
         },
-        required: ['library', 'topic'],
+        required: ['libraryId', 'topic'],
       },
     },
   },
 ];
 
-// ponytail: mcpCall reconnects every tool call (~300ms spawn cost). Cache a persistent client per (spec, generate-call) if latency bites.
-async function runTool(name: string, args: Record<string, any>, cwd: string): Promise<string> {
+function readFileTool(cwd: string, args: { path: string; startLine?: number; endLine?: number }): string {
+  const abs = args.path.startsWith('/') ? args.path : `${cwd.replace(/\/$/, '')}/${args.path}`;
+  const lines = fs.readFileSync(abs, 'utf8').split('\n');
+  const start = Math.max(1, args.startLine ?? 1);
+  const end = Math.min(lines.length, args.endLine ?? start + 399);
+  return lines.slice(start - 1, end).map((l, i) => `${start + i}: ${l}`).join('\n');
+}
+
+async function runTool(name: string, args: Record<string, any>, fff: Client, cwd: string): Promise<string> {
   try {
-    if (name === 'grep_codebase') return await mcpCall(config.mcp.fff, 'grep', { pattern: args.pattern, path: args.path ?? cwd });
-    if (name === 'find_files')    return await mcpCall(config.mcp.fff, 'find_files', { pattern: args.pattern, path: cwd });
-    if (name === 'get_library_docs') return await mcpCall(config.mcp.context7, 'get-library-docs', {
-      context7CompatibleLibraryID: args.library, topic: args.topic, tokens: 2000,
+    if (name === 'grep_codebase')      return await callTool(fff, 'grep',       { query: args.query });
+    if (name === 'find_files')         return await callTool(fff, 'find_files', { query: args.query });
+    if (name === 'read_file')          return readFileTool(cwd, args as any);
+    if (name === 'resolve_library_id') return await mcpCall(config.mcp.context7, 'resolve-library-id', { libraryName: args.libraryName });
+    if (name === 'get_library_docs')   return await mcpCall(config.mcp.context7, 'get-library-docs', {
+      context7CompatibleLibraryID: args.libraryId, topic: args.topic, tokens: 2000,
     });
     return `unknown tool: ${name}`;
   } catch (e) { return `error: ${(e as Error).message}`; }
@@ -104,25 +142,38 @@ export async function generate(userPrompt: string | undefined, screenshot: strin
     { role: 'system', content: prompts.system },
     { role: 'user', content: userContent },
   ];
+  console.log('[viking:llm] query', { model: config.llm.model, cwd, activeFile: launch?.activeFile, hasScreenshot: !!screenshot, prompt: prompts.user(ctx) });
 
-  // ponytail: cap the tool-call loop at 5 rounds; raise if the model regularly hits the ceiling.
-  for (let i = 0; i < 5; i++) {
-    const res = await client.chat.completions.create({
-      model: config.llm.model,
-      messages,
-      tools: TOOLS,
-      response_format: zodResponseFormat(LLMResponse, 'options'),
-    });
-    const msg = res.choices[0].message;
-    messages.push(msg);
-    if (!msg.tool_calls?.length) {
-      return LLMResponse.parse(JSON.parse(msg.content ?? '{}')).options;
+  // One persistent fff-mcp for the whole call — first spawn scans async (~50ms), reused calls hit the warm index.
+  const fff = await openMcp({ command: config.mcp.fff.command, args: [cwd] });
+  await new Promise(r => setTimeout(r, 250)); // ponytail: let fff finish its initial scan; drop when fff signals "ready".
+  try {
+    // ponytail: cap the tool-call loop at 5 rounds; raise if the model regularly hits the ceiling.
+    for (let i = 0; i < 8; i++) {
+      const res = await client.chat.completions.create({
+        model: config.llm.model,
+        messages,
+        tools: TOOLS,
+        response_format: zodResponseFormat(LLMResponse, 'options'),
+      });
+      const msg = res.choices[0].message;
+      messages.push(msg);
+      if (!msg.tool_calls?.length) {
+        const options = LLMResponse.parse(JSON.parse(msg.content ?? '{}')).options;
+        console.log(`[viking:llm] final rounds=${i + 1} options=${options.length}`);
+        options.forEach((o, idx) => console.log(`  [${idx}] ${o.label} (${o.language}) → ${o.file}`));
+        return options;
+      }
+      for (const call of msg.tool_calls) {
+        const args = JSON.parse(call.function.arguments || '{}');
+        console.log(`[viking:llm] tool r${i + 1} → ${call.function.name}`, args);
+        const result = await runTool(call.function.name, args, fff, cwd);
+        console.log(`[viking:llm] tool r${i + 1} ← ${call.function.name}`, result.slice(0, 400) + (result.length > 400 ? `… (${result.length}b)` : ''));
+        messages.push({ role: 'tool', tool_call_id: call.id, content: result });
+      }
     }
-    for (const call of msg.tool_calls) {
-      const args = JSON.parse(call.function.arguments || '{}');
-      const result = await runTool(call.function.name, args, cwd);
-      messages.push({ role: 'tool', tool_call_id: call.id, content: result });
-    }
+    throw new Error('LLM kept calling tools past the 5-round cap');
+  } finally {
+    await fff.close();
   }
-  throw new Error('LLM kept calling tools past the 5-round cap');
 }
