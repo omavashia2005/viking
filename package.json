@@ -11,6 +11,7 @@
     "setup": "npm run setup:build && node dist/setup.js"
   },
   "dependencies": {
+    "@ff-labs/fff-node": "^0.9.6",
     "@modelcontextprotocol/sdk": "^1.0.4",
     "@upstash/context7-mcp": "^1.0.14",
     "highlight.js": "^11.11.1",
