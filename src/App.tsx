@@ -26,6 +26,7 @@ export default function App(): JSX.Element {
   const [active, setActive] = useState(0);
   const [prompt, setPrompt] = useState('');
   const [error, setError] = useState('');
+  const [softError, setSoftError] = useState('');
   const [refineFrom, setRefineFrom] = useState<Option | undefined>();
   const [copied, setCopied] = useState(false);
   const [llm, setLlm] = useState<LLM>({ baseURL: '', apiKey: '', model: '' });
@@ -41,20 +42,31 @@ export default function App(): JSX.Element {
     }
     window.viking.on('viking:show', ({ mode, refineFrom }: { mode: 'textbox' | 'followup'; refineFrom?: Option }) => {
       console.log('[viking] show', mode);
-      setError(''); setPrompt(''); setCopied(false);
+      setError(''); setSoftError(''); setPrompt(''); setCopied(false);
       setPhase('textbox');
       setRefineFrom(mode === 'followup' ? refineFrom : undefined);
       setTimeout(() => inputRef.current?.focus(), 50);
     });
-    window.viking.on('viking:loading', () => setPhase('loading'));
-    window.viking.on('viking:result', (p: { options: Option[]; error?: string }) => {
+    window.viking.on('viking:loading', () => { setSoftError(''); setPhase('loading'); });
+    window.viking.on('viking:result', (p: { options: Option[]; error?: string; softError?: string }) => {
       if (p.error) { setError(p.error); setPhase('error'); return; }
+      if (p.softError) {
+        setSoftError(p.softError);
+        if (p.options.length === 0) { setPhase('textbox'); setTimeout(() => inputRef.current?.focus(), 50); return; }
+      }
       setOptions(p.options); setActive(0); setPhase('results');
     });
     window.viking.on('viking:reset', () => setPhase('hidden'));
   }, []);
 
   useEffect(() => { window.viking.setActive(active); }, [active]);
+
+  // Auto-dismiss the soft alert after ~5s. Timer resets whenever a new softError arrives.
+  useEffect(() => {
+    if (!softError) return;
+    const t = setTimeout(() => setSoftError(''), 5000);
+    return () => clearTimeout(t);
+  }, [softError]);
 
   // Autosave settings on change. ponytail: per-keystroke write, debounce when disk thrash matters.
   useEffect(() => {
@@ -133,6 +145,14 @@ export default function App(): JSX.Element {
 
   if (phase === 'hidden') return <div style={{ display: 'none' }} />;
 
+  const alertEl = softError ? (
+    <div className="alert" role="status" aria-live="polite">
+      <span className="alert-tag">alert</span>
+      <span className="alert-msg">{softError}</span>
+      <button className="alert-x" onClick={() => setSoftError('')} aria-label="dismiss">×</button>
+    </div>
+  ) : null;
+
   // Spotlight layout for textbox / follow-up phase
   if (phase === 'textbox') {
     const growTextarea = (el: HTMLTextAreaElement) => {
@@ -167,6 +187,7 @@ export default function App(): JSX.Element {
           />
           {refineFrom && <span className="chip">↻ {refineFrom.language}</span>}
         </form>
+        {alertEl}
       </div>
     );
   }
@@ -280,6 +301,7 @@ export default function App(): JSX.Element {
         </div>
       )}
       <div className="grip" />
+      {alertEl}
     </div>
   );
 }
