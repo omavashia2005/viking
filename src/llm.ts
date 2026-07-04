@@ -124,7 +124,10 @@ function seedContext(launch: LaunchArgs | undefined): { cwd: string; activeFileS
   return { cwd, activeFileSnippet: snippet };
 }
 
-export async function generate(userPrompt: string | undefined, screenshot: string | undefined, launch?: LaunchArgs): Promise<Option[]> {
+// ponytail: cap schema-parse retries at 3; raise if models regularly need more nudges to produce valid JSON.
+const MAX_SCHEMA_RETRIES = 3;
+
+export async function generate(userPrompt: string | undefined, screenshot: string | undefined, launch?: LaunchArgs): Promise<{ options: Option[]; softError?: string }> {
   const { cwd, activeFileSnippet } = seedContext(launch);
   const client = new OpenAI({ baseURL: config.llm.baseURL, apiKey: config.llm.apiKey });
 
@@ -147,6 +150,8 @@ export async function generate(userPrompt: string | undefined, screenshot: strin
   // One persistent fff-mcp for the whole call — first spawn scans async (~50ms), reused calls hit the warm index.
   const fff = await openMcp({ command: config.mcp.fff.command, args: [cwd] });
   await new Promise(r => setTimeout(r, 250)); // ponytail: let fff finish its initial scan; drop when fff signals "ready".
+  let schemaRetries = 0;
+  let lastSchemaErr = '';
   try {
     // ponytail: cap the tool-call loop at 8 rounds; raise if the model regularly hits the ceiling.
     for (let i = 0; i < 8; i++) {
@@ -159,13 +164,32 @@ export async function generate(userPrompt: string | undefined, screenshot: strin
       const msg = res.choices[0].message;
       messages.push(msg);
       if (!msg.tool_calls?.length) {
-        const options = LLMResponse.parse(JSON.parse(msg.content ?? '{}')).options;
-        console.log(`[viking:llm] final rounds=${i + 1} options=${options.length}`);
-        options.forEach((o, idx) => console.log(`  [${idx}] ${o.label} (${o.language}) → ${o.file}`));
-        return options;
+        try {
+          const options = LLMResponse.parse(JSON.parse(msg.content ?? '{}')).options;
+          console.log(`[viking:llm] final rounds=${i + 1} options=${options.length}`);
+          options.forEach((o, idx) => console.log(`  [${idx}] ${o.label} (${o.language}) → ${o.file}`));
+          return { options };
+        } catch (e) {
+          lastSchemaErr = (e as Error).message;
+          schemaRetries++;
+          console.log('[viking:llm] schema retry', schemaRetries, lastSchemaErr);
+          if (schemaRetries >= MAX_SCHEMA_RETRIES) {
+            return { options: [], softError: `schema validation failed after ${MAX_SCHEMA_RETRIES} retries: ${lastSchemaErr}` };
+          }
+          messages.push({ role: 'user', content: `Your last response failed JSON schema validation: ${lastSchemaErr}. Return only JSON matching the provided schema — no prose.` });
+        }
+        continue;
       }
       for (const call of msg.tool_calls) {
-        const args = JSON.parse(call.function.arguments || '{}');
+        let args: Record<string, any>;
+        try {
+          args = JSON.parse(call.function.arguments || '{}');
+        } catch (e) {
+          const errMsg = `error: invalid JSON in tool arguments: ${(e as Error).message}`;
+          console.log(`[viking:llm] tool r${i + 1} → ${call.function.name} [bad args]`, call.function.arguments);
+          messages.push({ role: 'tool', tool_call_id: call.id, content: errMsg });
+          continue;
+        }
         console.log(`[viking:llm] tool r${i + 1} → ${call.function.name}`, args);
         const result = await runTool(call.function.name, args, fff, cwd);
         console.log(`[viking:llm] tool r${i + 1} ← ${call.function.name}`, result.slice(0, 400) + (result.length > 400 ? `… (${result.length}b)` : ''));
