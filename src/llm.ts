@@ -148,7 +148,7 @@ export async function generate(userPrompt: string | undefined, screenshot: strin
   const fff = await openMcp({ command: config.mcp.fff.command, args: [cwd] });
   await new Promise(r => setTimeout(r, 250)); // ponytail: let fff finish its initial scan; drop when fff signals "ready".
   try {
-    // ponytail: cap the tool-call loop at 5 rounds; raise if the model regularly hits the ceiling.
+    // ponytail: cap the tool-call loop at 8 rounds; raise if the model regularly hits the ceiling.
     for (let i = 0; i < 8; i++) {
       const res = await client.chat.completions.create({
         model: config.llm.model,
