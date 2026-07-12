@@ -19,6 +19,14 @@ declare global {
 type Phase = 'hidden' | 'textbox' | 'loading' | 'results' | 'error' | 'provider' | 'keymaps';
 type LLM = { baseURL: string; apiKey: string; model: string };
 type Hotkeys = { open: string; settings: string; close: string; copy: string };
+type ToolCallLog = {
+  id: string;
+  name: string;
+  status: 'running' | 'done' | 'error';
+  args?: Record<string, unknown>;
+  detail?: string;
+  error?: string;
+};
 
 export default function App(): JSX.Element {
   const [phase, setPhase] = useState<Phase>('hidden');
@@ -31,6 +39,7 @@ export default function App(): JSX.Element {
   const [copied, setCopied] = useState(false);
   const [llm, setLlm] = useState<LLM>({ baseURL: '', apiKey: '', model: '' });
   const [hotkeys, setHotkeys] = useState<Hotkeys>({ open: '', settings: '', close: '', copy: '' });
+  const [toolCalls, setToolCalls] = useState<ToolCallLog[]>([]);
   const [saved, setSaved] = useState(false);
   const settingsReady = useRef(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -42,12 +51,21 @@ export default function App(): JSX.Element {
     }
     window.viking.on('viking:show', ({ mode, refineFrom }: { mode: 'textbox' | 'followup'; refineFrom?: Option }) => {
       console.log('[viking] show', mode);
-      setError(''); setSoftError(''); setPrompt(''); setCopied(false);
+      setError(''); setSoftError(''); setPrompt(''); setCopied(false); setToolCalls([]);
       setPhase('textbox');
       setRefineFrom(mode === 'followup' ? refineFrom : undefined);
       setTimeout(() => inputRef.current?.focus(), 50);
     });
-    window.viking.on('viking:loading', () => { setSoftError(''); setPhase('loading'); });
+    window.viking.on('viking:loading', () => { setSoftError(''); setToolCalls([]); setPhase('loading'); });
+    window.viking.on('viking:tool', (event: ToolCallLog) => {
+      setToolCalls(prev => {
+        const i = prev.findIndex(t => t.id === event.id);
+        if (i < 0) return [...prev, event];
+        const next = prev.slice();
+        next[i] = { ...next[i], ...event, args: event.args ?? next[i].args };
+        return next;
+      });
+    });
     window.viking.on('viking:result', (p: { options: Option[]; error?: string; softError?: string }) => {
       if (p.error) { setError(p.error); setPhase('error'); return; }
       if (p.softError) {
@@ -213,7 +231,28 @@ export default function App(): JSX.Element {
         <span className="hint">q</span>
       </header>
 
-      {phase === 'loading' && <div className="loading pulse">thinking</div>}
+      {phase === 'loading' && (
+        <div
+          className="loading"
+          style={{ display: 'block', padding: 18, overflowY: 'auto', textTransform: 'none', letterSpacing: 0 }}
+        >
+          {toolCalls.length === 0 ? (
+            <div className="pulse" style={{ marginTop: 120, textAlign: 'center', letterSpacing: '0.18em', textTransform: 'lowercase' }}>thinking</div>
+          ) : (
+            toolCalls.map(t => {
+              return (
+                <div key={t.id} style={{ padding: '7px 0', borderBottom: '1px solid var(--line)' }}>
+                  <span style={{ color: t.status === 'error' ? '#ff7676' : t.status === 'running' ? 'var(--accent)' : 'var(--dim)' }}>
+                    {t.status === 'error' ? '!' : t.status === 'running' ? '→' : '✓'}
+                  </span>{' '}
+                  <span>{t.name}</span>{' '}
+                  <span style={{ color: 'var(--dim)' }}>{t.detail}</span>
+                </div>
+              );
+            })
+          )}
+        </div>
+      )}
 
       {phase === 'results' && current && (
         <div className="codewrap">

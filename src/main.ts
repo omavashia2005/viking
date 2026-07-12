@@ -2,7 +2,7 @@ import { app, BrowserWindow, globalShortcut, ipcMain, screen, desktopCapturer, n
 import path from 'node:path';
 import fs from 'node:fs';
 import { config } from './config';
-import { generate } from './llm';
+import { generate, type ToolProgress } from './llm';
 import type { Option, LaunchArgs } from './shared-types';
 
 // Caller passes the payload after '--args'. Chromium/Electron may inject its
@@ -137,7 +137,12 @@ async function run(prompt: string | undefined, refineFrom?: Option): Promise<voi
   win?.webContents.send('viking:loading');
   const screenshot = await captureScreen();
   try {
-    const { options, softError } = await generate(buildPrompt(prompt, refineFrom), screenshot, currentLaunch);
+    const { options, softError } = await generate(
+      buildPrompt(prompt, refineFrom),
+      screenshot,
+      currentLaunch,
+      (event: ToolProgress) => win?.webContents.send('viking:tool', event),
+    );
     lastOptions = options;
     activeIdx = 0;
     win?.webContents.send('viking:result', { options, softError });

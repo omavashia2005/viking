@@ -127,7 +127,46 @@ function seedContext(launch: LaunchArgs | undefined): { cwd: string; activeFileS
 // ponytail: cap schema-parse retries at 3; raise if models regularly need more nudges to produce valid JSON.
 const MAX_SCHEMA_RETRIES = 3;
 
-export async function generate(userPrompt: string | undefined, screenshot: string | undefined, launch?: LaunchArgs): Promise<{ options: Option[]; softError?: string }> {
+export type ToolProgress = {
+  id: string;
+  name: string;
+  status: 'running' | 'done' | 'error';
+  args?: Record<string, unknown>;
+  detail?: string;
+  error?: string;
+};
+
+function oneLine(value: unknown, max = 180): string {
+  const s = typeof value === 'string' ? value : JSON.stringify(value);
+  return String(s ?? '').replace(/\s+/g, ' ').slice(0, max);
+}
+
+function readTarget(args: Record<string, unknown>): string {
+  const start = typeof args.startLine === 'number' ? args.startLine : undefined;
+  const end = typeof args.endLine === 'number' ? args.endLine : undefined;
+  return `${args.path ?? ''}${start ? `:${start}${end ? `-${end}` : ''}` : ''}`;
+}
+
+function resultFiles(result: string): string {
+  const files = new Set<string>();
+  for (const line of result.split('\n')) {
+    const m = line.match(/^(.+?):\d+[:|]/) ?? line.match(/^-> Read (.+?)(?:\s|$)/) ?? line.match(/^([./\w-][^:\n]*\.\w+)(?:\s|$)/);
+    if (m?.[1]) files.add(m[1]);
+    if (files.size >= 4) break;
+  }
+  return [...files].join(', ');
+}
+
+function toolDetail(name: string, args: Record<string, unknown>, result?: string): string {
+  if (name === 'grep_codebase') return result ? `query: ${oneLine(args.query)} -> matches: ${resultFiles(result) || 'none'}` : `query: ${oneLine(args.query)}`;
+  if (name === 'find_files') return result ? `query: ${oneLine(args.query)} -> results: ${resultFiles(result) || oneLine(result) || 'none'}` : `query: ${oneLine(args.query)}`;
+  if (name === 'read_file') return `file: ${readTarget(args)}`;
+  if (name === 'resolve_library_id') return result ? `resolved: ${oneLine(result)}` : `library: ${oneLine(args.libraryName)}`;
+  if (name === 'get_library_docs') return `docs: ${oneLine(args.libraryId)} ${oneLine(args.topic)}`;
+  return result ? oneLine(result) : oneLine(args);
+}
+
+export async function generate(userPrompt: string | undefined, screenshot: string | undefined, launch?: LaunchArgs, onTool?: (event: ToolProgress) => void): Promise<{ options: Option[]; softError?: string }> {
   const { cwd, activeFileSnippet } = seedContext(launch);
   const client = new OpenAI({ baseURL: config.llm.baseURL, apiKey: config.llm.apiKey });
 
@@ -152,9 +191,10 @@ export async function generate(userPrompt: string | undefined, screenshot: strin
   await new Promise(r => setTimeout(r, 250)); // ponytail: let fff finish its initial scan; drop when fff signals "ready".
   let schemaRetries = 0;
   let lastSchemaErr = '';
+  let rounds = 0;
   try {
-    // ponytail: cap the tool-call loop at 8 rounds; raise if the model regularly hits the ceiling.
-    for (let i = 0; i < 8; i++) {
+    for (;;) {
+      rounds++;
       const res = await client.chat.completions.create({
         model: config.llm.model,
         messages,
@@ -166,7 +206,7 @@ export async function generate(userPrompt: string | undefined, screenshot: strin
       if (!msg.tool_calls?.length) {
         try {
           const options = LLMResponse.parse(JSON.parse(msg.content ?? '{}')).options;
-          console.log(`[viking:llm] final rounds=${i + 1} options=${options.length}`);
+          console.log(`[viking:llm] final rounds=${rounds} options=${options.length}`);
           options.forEach((o, idx) => console.log(`  [${idx}] ${o.label} (${o.language}) → ${o.file}`));
           return { options };
         } catch (e) {
@@ -186,17 +226,20 @@ export async function generate(userPrompt: string | undefined, screenshot: strin
           args = JSON.parse(call.function.arguments || '{}');
         } catch (e) {
           const errMsg = `error: invalid JSON in tool arguments: ${(e as Error).message}`;
-          console.log(`[viking:llm] tool r${i + 1} → ${call.function.name} [bad args]`, call.function.arguments);
+          console.log(`[viking:llm] tool r${rounds} → ${call.function.name} [bad args]`, call.function.arguments);
+          onTool?.({ id: call.id, name: call.function.name, status: 'error', detail: errMsg, error: errMsg });
           messages.push({ role: 'tool', tool_call_id: call.id, content: errMsg });
           continue;
         }
-        console.log(`[viking:llm] tool r${i + 1} → ${call.function.name}`, args);
+        console.log(`[viking:llm] tool r${rounds} → ${call.function.name}`, args);
+        onTool?.({ id: call.id, name: call.function.name, status: 'running', args, detail: toolDetail(call.function.name, args) });
         const result = await runTool(call.function.name, args, fff, cwd);
-        console.log(`[viking:llm] tool r${i + 1} ← ${call.function.name}`, result.slice(0, 400) + (result.length > 400 ? `… (${result.length}b)` : ''));
+        console.log(`[viking:llm] tool r${rounds} ← ${call.function.name}`, result.slice(0, 400) + (result.length > 400 ? `… (${result.length}b)` : ''));
+        const failed = result.startsWith('error:');
+        onTool?.({ id: call.id, name: call.function.name, status: failed ? 'error' : 'done', detail: failed ? result : toolDetail(call.function.name, args, result), error: failed ? result : undefined });
         messages.push({ role: 'tool', tool_call_id: call.id, content: result });
       }
     }
-    throw new Error('LLM kept calling tools past the 5-round cap');
   } finally {
     await fff.close();
   }
