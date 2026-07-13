@@ -17,7 +17,7 @@ export const neovim: Ide = {
     return fs.existsSync(entryFile) ? { dir, entryFile } : null;
   },
   pluginPath(configDir) {
-    return path.join(configDir, 'lua', 'viking.lua');
+    return path.join(configDir, 'lua', 'viking_overlay.lua');
   },
-  entryRequire: "require('viking')",
+  entryRequire: "require('viking_overlay')",
 };

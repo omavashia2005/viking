@@ -54,6 +54,15 @@ function patchInit(entryFile: string, entryRequire: string): void {
   fs.writeFileSync(entryFile, next);
 }
 
+function moveOldNvimStub(configDir: string): void {
+  const old = path.join(configDir, 'lua', 'viking.lua');
+  if (!fs.existsSync(old)) return;
+  const cur = fs.readFileSync(old, 'utf8');
+  if (!cur.includes('-- >>> viking-constants')) return;
+  const backup = fs.existsSync(`${old}.old`) ? `${old}.${Date.now()}.old` : `${old}.old`;
+  fs.renameSync(old, backup);
+}
+
 function main(): void {
   runBuild();
   const appPath = resolveAppPath();
@@ -71,6 +80,7 @@ function main(): void {
 
   fs.mkdirSync(path.dirname(pluginFile), { recursive: true });
   fs.writeFileSync(pluginFile, renderStub(appPath, keymap));
+  moveOldNvimStub(loc.dir);
   patchInit(loc.entryFile, ide.entryRequire);
 
   console.log('[viking-setup] done.');
