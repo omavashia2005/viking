@@ -10,6 +10,23 @@ import { TitleBar } from '@/components/TitleBar';
 import { ToolCallLog, type ToolCallEntry } from '@/components/ToolCallLog';
 import type { Hotkeys, LLM, Phase } from '@/components/types';
 
+type ToolCallEvent = {
+  id: string;
+  name: string;
+  status: ToolCallEntry['status'];
+  args?: Record<string, unknown>;
+  detail?: string;
+  error?: string;
+};
+
+function mergeToolCall(prev: ToolCallEntry[], event: ToolCallEvent): ToolCallEntry[] {
+  const i = prev.findIndex(t => t.id === event.id);
+  if (i < 0) return [...prev, event];
+  const next = prev.slice();
+  next[i] = { ...next[i], ...event, args: event.args ?? next[i].args };
+  return next;
+}
+
 declare global {
   interface Window {
     viking: {
@@ -53,15 +70,7 @@ export default function App(): JSX.Element {
       setTimeout(() => inputRef.current?.focus(), 50);
     });
     window.viking.on('viking:loading', () => { setSoftError(''); setToolCalls([]); setPhase('loading'); });
-    window.viking.on('viking:tool', (event: ToolCallEntry) => {
-      setToolCalls(prev => {
-        const i = prev.findIndex(t => t.id === event.id);
-        if (i < 0) return [...prev, event];
-        const next = prev.slice();
-        next[i] = { ...next[i], ...event, args: event.args ?? next[i].args };
-        return next;
-      });
-    });
+    window.viking.on('viking:tool', (event: ToolCallEvent) => setToolCalls(prev => mergeToolCall(prev, event)));
     window.viking.on('viking:result', (p: { options: Option[]; error?: string; softError?: string }) => {
       if (p.error) { setError(p.error); setPhase('error'); return; }
       if (p.softError) {

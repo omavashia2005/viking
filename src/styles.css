@@ -18,6 +18,7 @@
   --accent-foreground: #f4f1ea;
   --destructive: #ff7676;
   --destructive-foreground: #0a0a0a;
+  --warning: #e0a341;
   --border: rgba(244, 241, 234, 0.08);
   --input: rgba(244, 241, 234, 0.14);
   --ring: #d4ff00;
@@ -43,6 +44,7 @@
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
+  --color-warning: var(--warning);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
@@ -50,4 +52,119 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+}
+
+@layer base {
+  html, body, #root { margin: 0; height: 100vh; background: transparent; }
+  body { color: var(--foreground); font: 13px 'JetBrains Mono', ui-monospace, monospace;
+    overflow: hidden; -webkit-font-smoothing: antialiased; }
+}
+
+/* overlay chrome — unlayered on purpose so these rules win over utility classes,
+   matching the old inline-<style> cascade */
+.overlay, .spot { height: 100vh; display: flex; flex-direction: column;
+  background: var(--card);
+  backdrop-filter: blur(14px) saturate(140%); -webkit-backdrop-filter: blur(14px) saturate(140%);
+  border: 1px solid var(--border); border-radius: 14px; overflow: hidden;
+  box-shadow: 0 30px 80px rgba(0,0,0,0.5); -webkit-app-region: drag;
+  contain: layout style; }
+
+.bar { display: flex; align-items: center; gap: 10px; padding: 10px 14px;
+  border-bottom: 1px solid var(--border); font-size: 11px; letter-spacing: 0.05em; }
+.brand { font-weight: 700; text-transform: lowercase; letter-spacing: 0.18em; }
+.sep, .state, .hint { color: var(--muted-foreground); }
+.state { text-transform: lowercase; } .err { color: var(--destructive); }
+.pulse { animation: p 1.4s ease-in-out infinite; }
+@keyframes p { 0%,100% { opacity: 0.45; } 50% { opacity: 1; } }
+.hint { margin-left: auto; font-size: 10px; border: 1px solid var(--border); padding: 2px 6px; border-radius: 4px; }
+.tabs { display: flex; gap: 6px; margin-left: 12px; -webkit-app-region: no-drag; }
+
+.prompt { display: flex; align-items: flex-start; gap: 12px; padding: 18px 20px;
+  flex: 1; -webkit-app-region: drag; }
+.prompt textarea, .prompt .chip { -webkit-app-region: no-drag; }
+.caret { color: var(--primary); font-size: 22px; line-height: 1.3; padding-top: 1px; }
+.prompt textarea { flex: 1; background: transparent; border: none; outline: none;
+  color: var(--foreground); font: inherit; font-size: 18px; font-weight: 300;
+  caret-color: var(--primary); resize: none; padding: 0; margin: 0;
+  line-height: 1.4; max-height: 240px; overflow-y: auto;
+  font-family: inherit;
+  contain: paint; transform: translateZ(0); will-change: scroll-position;
+  overscroll-behavior: contain; }
+.prompt textarea::placeholder { color: var(--muted-foreground); font-style: italic; }
+.chip { color: var(--primary); font-size: 10px; text-transform: lowercase;
+  letter-spacing: 0.1em; border: 1px solid color-mix(in srgb, var(--primary) 35%, transparent);
+  padding: 2px 8px; border-radius: 999px; }
+
+.loading { flex: 1; display: grid; place-items: center; color: var(--muted-foreground);
+  text-transform: lowercase; letter-spacing: 0.18em; font-size: 11px; }
+
+.codewrap { flex: 1; display: flex; flex-direction: column; min-height: 0; -webkit-app-region: no-drag; }
+.codehead { display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 18px; border-bottom: 1px solid var(--border);
+  background: rgba(0,0,0,0.18); }
+.lang { color: var(--muted-foreground); font-size: 10.5px; text-transform: lowercase; letter-spacing: 0.12em; }
+.file { color: var(--muted-foreground); font-size: 10.5px; font-family: ui-monospace, monospace; margin-left: 10px; opacity: 0.75; }
+.copyhint { color: var(--muted-foreground); font-size: 10.5px; text-transform: lowercase; letter-spacing: 0.1em;
+  transition: color 140ms ease; }
+.code { flex: 1; margin: 0; padding: 14px 18px; overflow-y: auto; overflow-x: hidden;
+  font-size: 13px; line-height: 1.55; white-space: pre-wrap; word-break: break-word;
+  user-select: text; background: transparent; cursor: copy;
+  /* responsive scroll: isolate paint, give it its own GPU layer, kill rubber-band */
+  contain: paint; transform: translateZ(0); will-change: scroll-position;
+  overscroll-behavior: contain; scrollbar-gutter: stable; }
+.code:hover ~ .codehead .copyhint, .codewrap:hover .copyhint { color: var(--foreground); }
+.code code.hljs, .code code { background: transparent !important; padding: 0; display: block; }
+.ln { display: grid; grid-template-columns: 2.5em 1fr; column-gap: 14px; }
+.gutter { color: var(--muted-foreground); opacity: 0.45; text-align: right; user-select: none;
+  font-variant-numeric: tabular-nums; -webkit-user-select: none; }
+.lc { white-space: pre-wrap; word-break: break-word; min-width: 0; }
+/* shared scrollbar treatment — thinner, less paint-heavy */
+.code::-webkit-scrollbar, .settings::-webkit-scrollbar, .prompt textarea::-webkit-scrollbar { width: 6px; height: 6px; }
+.code::-webkit-scrollbar-track, .settings::-webkit-scrollbar-track, .prompt textarea::-webkit-scrollbar-track { background: transparent; }
+.code::-webkit-scrollbar-thumb, .settings::-webkit-scrollbar-thumb, .prompt textarea::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--foreground) 14%, transparent); border-radius: 3px; transition: background 120ms ease; }
+.code::-webkit-scrollbar-thumb:hover, .settings::-webkit-scrollbar-thumb:hover, .prompt textarea::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--foreground) 32%, transparent); }
+
+.errbody { flex: 1; padding: 28px 26px; display: flex; flex-direction: column;
+  gap: 12px; -webkit-app-region: no-drag; user-select: text; }
+.errhead { color: var(--destructive); font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; }
+.errmsg { color: var(--foreground); font-size: 15px; font-weight: 300; line-height: 1.5; white-space: pre-wrap; }
+.errhint { color: var(--muted-foreground); font-size: 11px; margin-top: auto; }
+
+.settings { flex: 1; padding: 22px 26px; display: flex; flex-direction: column; gap: 14px;
+  overflow-y: auto; -webkit-app-region: no-drag;
+  contain: paint; transform: translateZ(0); will-change: scroll-position;
+  overscroll-behavior: contain; scrollbar-gutter: stable; }
+.settings label { display: flex; flex-direction: column; gap: 5px; }
+.settings label span { color: var(--muted-foreground); font-size: 10.5px;
+  text-transform: lowercase; letter-spacing: 0.16em; }
+.srow { display: flex; align-items: center; gap: 14px; margin-top: 6px; }
+.autosave { color: var(--primary); font-size: 11px; letter-spacing: 0.1em;
+  text-transform: lowercase; transition: opacity 200ms ease; }
+.shint { color: var(--muted-foreground); font-size: 11px; margin-left: auto; }
+
+.grip { position: fixed; right: 4px; bottom: 4px; width: 12px; height: 12px;
+  cursor: nwse-resize; -webkit-app-region: no-drag; opacity: 0.35;
+  background: linear-gradient(135deg, transparent 55%, var(--foreground) 55% 62%,
+    transparent 62% 72%, var(--foreground) 72% 79%, transparent 79%); }
+.grip:hover { opacity: 0.8; }
+
+/* soft alert — lives above content, ignores drag, sits clear of the grip */
+.alert { position: fixed; right: 16px; bottom: 24px; z-index: 20;
+  max-width: 340px; display: flex; align-items: flex-start; gap: 10px;
+  padding: 9px 11px 9px 12px; background: var(--popover);
+  backdrop-filter: blur(14px) saturate(140%); -webkit-backdrop-filter: blur(14px) saturate(140%);
+  border: 1px solid color-mix(in srgb, var(--warning) 55%, transparent); border-radius: 8px;
+  box-shadow: 0 12px 30px rgba(0,0,0,0.45);
+  -webkit-app-region: no-drag; pointer-events: auto;
+  animation: alert-in 140ms ease-out both; }
+.alert.out { animation: alert-out 140ms ease-in both; }
+@keyframes alert-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes alert-out {
+  from { opacity: 1; transform: translateY(0); }
+  to   { opacity: 0; transform: translateY(4px); }
 }
