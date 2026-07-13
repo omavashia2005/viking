@@ -1,6 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import hljs from 'highlight.js/lib/common';
 import type { Option } from './shared-types';
+import { Button } from '@/components/ui/button';
+import { CodeView } from '@/components/CodeView';
+import { SettingsPanel } from '@/components/SettingsPanel';
+import { SoftAlert } from '@/components/SoftAlert';
+import { ToolCallLog, type ToolCallEntry } from '@/components/ToolCallLog';
 
 declare global {
   interface Window {
@@ -19,14 +24,6 @@ declare global {
 type Phase = 'hidden' | 'textbox' | 'loading' | 'results' | 'error' | 'provider' | 'keymaps';
 type LLM = { baseURL: string; apiKey: string; model: string };
 type Hotkeys = { open: string; settings: string; close: string; copy: string };
-type ToolCallLog = {
-  id: string;
-  name: string;
-  status: 'running' | 'done' | 'error';
-  args?: Record<string, unknown>;
-  detail?: string;
-  error?: string;
-};
 
 export default function App(): JSX.Element {
   const [phase, setPhase] = useState<Phase>('hidden');
@@ -39,7 +36,7 @@ export default function App(): JSX.Element {
   const [copied, setCopied] = useState(false);
   const [llm, setLlm] = useState<LLM>({ baseURL: '', apiKey: '', model: '' });
   const [hotkeys, setHotkeys] = useState<Hotkeys>({ open: '', settings: '', close: '', copy: '' });
-  const [toolCalls, setToolCalls] = useState<ToolCallLog[]>([]);
+  const [toolCalls, setToolCalls] = useState<ToolCallEntry[]>([]);
   const [saved, setSaved] = useState(false);
   const settingsReady = useRef(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -57,7 +54,7 @@ export default function App(): JSX.Element {
       setTimeout(() => inputRef.current?.focus(), 50);
     });
     window.viking.on('viking:loading', () => { setSoftError(''); setToolCalls([]); setPhase('loading'); });
-    window.viking.on('viking:tool', (event: ToolCallLog) => {
+    window.viking.on('viking:tool', (event: ToolCallEntry) => {
       setToolCalls(prev => {
         const i = prev.findIndex(t => t.id === event.id);
         if (i < 0) return [...prev, event];
@@ -163,13 +160,7 @@ export default function App(): JSX.Element {
 
   if (phase === 'hidden') return <div style={{ display: 'none' }} />;
 
-  const alertEl = softError ? (
-    <div className="alert" role="status" aria-live="polite">
-      <span className="alert-tag">alert</span>
-      <span className="alert-msg">{softError}</span>
-      <button className="alert-x" onClick={() => setSoftError('')} aria-label="dismiss">×</button>
-    </div>
-  ) : null;
+  const alertEl = <SoftAlert message={softError} onDismiss={() => setSoftError('')} />;
 
   // Spotlight layout for textbox / follow-up phase
   if (phase === 'textbox') {
@@ -222,9 +213,15 @@ export default function App(): JSX.Element {
         {phase === 'results' && (
           <nav className="tabs">
             {options.map((o, i) => (
-              <button key={i} className={`tab ${i === active ? 'on' : ''}`} onClick={() => setActive(i)}>
-                <span className="num">⌘{i + 1}</span><span>{o.label}</span>
-              </button>
+              <Button
+                key={i}
+                size="sm"
+                variant={i === active ? 'default' : 'outline'}
+                className="h-6 gap-1.5 rounded-full px-2.5 font-normal lowercase text-[10.5px]"
+                onClick={() => setActive(i)}
+              >
+                <span className="text-[9.5px] opacity-55">⌘{i + 1}</span><span>{o.label}</span>
+              </Button>
             ))}
           </nav>
         )}
@@ -236,54 +233,20 @@ export default function App(): JSX.Element {
           className="loading"
           style={{ display: 'block', padding: 18, overflowY: 'auto', textTransform: 'none', letterSpacing: 0 }}
         >
-          {toolCalls.length === 0 ? (
-            <div className="pulse" style={{ marginTop: 120, textAlign: 'center', letterSpacing: '0.18em', textTransform: 'lowercase' }}>thinking</div>
-          ) : (
-            toolCalls.map(t => {
-              return (
-                <div key={t.id} style={{ padding: '7px 0', borderBottom: '1px solid var(--line)' }}>
-                  <span style={{ color: t.status === 'error' ? '#ff7676' : t.status === 'running' ? 'var(--accent)' : 'var(--dim)' }}>
-                    {t.status === 'error' ? '!' : t.status === 'running' ? '→' : '✓'}
-                  </span>{' '}
-                  <span>{t.name}</span>{' '}
-                  <span style={{ color: 'var(--dim)' }}>{t.detail}</span>
-                </div>
-              );
-            })
-          )}
+          <ToolCallLog calls={toolCalls} />
         </div>
       )}
 
       {phase === 'results' && current && (
-        <div className="codewrap">
-          <div className="codehead">
-            <span className="lang">{current.language}</span>
-            {current.file && (
-              <span className="file" title={current.file}>
-                {current.file.split('/').pop()}{current.startLine ? `:${current.startLine}` : ''}
-              </span>
-            )}
-            <span className="copyhint">{copied ? '✓ copied' : 'click or ⌘C to copy'}</span>
-          </div>
-          <pre
-            className="code"
-            title="click to copy"
-            onClick={async () => {
-              if (window.getSelection()?.toString()) return; // user is selecting, don't hijack
-              await navigator.clipboard.writeText(current.code);
-              setCopied(true); setTimeout(() => setCopied(false), 1400);
-            }}
-          >
-            <code>
-              {highlightedLines.map((line, i) => (
-                <div key={i} className="ln">
-                  <span className="gutter">{(current.startLine ?? 1) + i}</span>
-                  <span className="lc" dangerouslySetInnerHTML={{ __html: line || ' ' }} />
-                </div>
-              ))}
-            </code>
-          </pre>
-        </div>
+        <CodeView
+          option={current}
+          lines={highlightedLines}
+          copied={copied}
+          onCopy={async () => {
+            await navigator.clipboard.writeText(current.code);
+            setCopied(true); setTimeout(() => setCopied(false), 1400);
+          }}
+        />
       )}
 
       {phase === 'error' && (
@@ -295,49 +258,28 @@ export default function App(): JSX.Element {
       )}
 
       {phase === 'provider' && (
-        <div className="settings">
-          <label><span>base url</span>
-            <input value={llm.baseURL} onChange={e => setLlm({ ...llm, baseURL: e.target.value })}
-              placeholder="https://api.openai.com/v1" spellCheck={false} autoFocus />
-          </label>
-          <label><span>api key</span>
-            <input value={llm.apiKey} onChange={e => setLlm({ ...llm, apiKey: e.target.value })}
-              placeholder="sk-…" type="password" spellCheck={false} />
-          </label>
-          <label><span>model</span>
-            <input value={llm.model} onChange={e => setLlm({ ...llm, model: e.target.value })}
-              placeholder="gpt-4o" spellCheck={false} />
-          </label>
-          <div className="srow">
-            <span className="autosave">{saved ? '✓ saved' : 'autosaves as you type'}</span>
-            <span className="shint">q to close · ⌘K for keymaps</span>
-          </div>
-        </div>
+        <SettingsPanel
+          saved={saved}
+          hint="q to close · ⌘K for keymaps"
+          fields={[
+            { label: 'base url', value: llm.baseURL, onChange: v => setLlm({ ...llm, baseURL: v }), placeholder: 'https://api.openai.com/v1', autoFocus: true },
+            { label: 'api key', value: llm.apiKey, onChange: v => setLlm({ ...llm, apiKey: v }), placeholder: 'sk-…', type: 'password' },
+            { label: 'model', value: llm.model, onChange: v => setLlm({ ...llm, model: v }), placeholder: 'gpt-4o' },
+          ]}
+        />
       )}
 
       {phase === 'keymaps' && (
-        <div className="settings">
-          <label><span>open prompt (global)</span>
-            <input value={hotkeys.open} onChange={e => setHotkeys({ ...hotkeys, open: e.target.value })}
-              placeholder="CommandOrControl+I" spellCheck={false} autoFocus />
-          </label>
-          <label><span>open settings (window)</span>
-            <input value={hotkeys.settings} onChange={e => setHotkeys({ ...hotkeys, settings: e.target.value })}
-              placeholder="CommandOrControl+K" spellCheck={false} />
-          </label>
-          <label><span>close key (window, ignored while typing)</span>
-            <input value={hotkeys.close} onChange={e => setHotkeys({ ...hotkeys, close: e.target.value })}
-              placeholder="q" spellCheck={false} />
-          </label>
-          <label><span>copy active (⌘/Ctrl + …)</span>
-            <input value={hotkeys.copy} onChange={e => setHotkeys({ ...hotkeys, copy: e.target.value })}
-              placeholder="c" spellCheck={false} />
-          </label>
-          <div className="srow">
-            <span className="autosave">{saved ? '✓ saved' : 'autosaves as you type'}</span>
-            <span className="shint">q to close · ⌘S for provider</span>
-          </div>
-        </div>
+        <SettingsPanel
+          saved={saved}
+          hint="q to close · ⌘S for provider"
+          fields={[
+            { label: 'open prompt (global)', value: hotkeys.open, onChange: v => setHotkeys({ ...hotkeys, open: v }), placeholder: 'CommandOrControl+I', autoFocus: true },
+            { label: 'open settings (window)', value: hotkeys.settings, onChange: v => setHotkeys({ ...hotkeys, settings: v }), placeholder: 'CommandOrControl+K' },
+            { label: 'close key (window, ignored while typing)', value: hotkeys.close, onChange: v => setHotkeys({ ...hotkeys, close: v }), placeholder: 'q' },
+            { label: 'copy active (⌘/Ctrl + …)', value: hotkeys.copy, onChange: v => setHotkeys({ ...hotkeys, copy: v }), placeholder: 'c' },
+          ]}
+        />
       )}
       <div className="grip" />
       {alertEl}
