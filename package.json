@@ -4,8 +4,8 @@
   "main": "dist/main.js",
   "scripts": {
     "start": "npm run build && concurrently \"npm run watch\" \"electron .\"",
-    "watch": "concurrently \"esbuild src/main.ts --bundle --platform=node --external:electron --outfile=dist/main.js --format=cjs --watch\" \"esbuild src/preload.ts --bundle --platform=node --external:electron --outfile=dist/preload.js --format=cjs --watch\" \"esbuild src/index.tsx --bundle --outfile=dist/renderer.js --watch --loader:.js=jsx --define:process.env.NODE_ENV='\\\"development\\\"'\"",
-    "build": "esbuild src/main.ts --bundle --platform=node --external:electron --outfile=dist/main.js --format=cjs && esbuild src/preload.ts --bundle --platform=node --external:electron --outfile=dist/preload.js --format=cjs && esbuild src/index.tsx --bundle --outfile=dist/renderer.js --loader:.js=jsx --define:process.env.NODE_ENV='\"development\"'",
+    "watch": "concurrently \"esbuild src/main.ts --bundle --platform=node --external:electron --outfile=dist/main.js --format=cjs --watch\" \"esbuild src/preload.ts --bundle --platform=node --external:electron --outfile=dist/preload.js --format=cjs --watch\" \"esbuild src/index.tsx --bundle --outfile=dist/renderer.js --watch --loader:.js=jsx --define:process.env.NODE_ENV='\\\"development\\\"'\" \"tailwindcss -i src/styles.css -o dist/tailwind.css --watch\"",
+    "build": "esbuild src/main.ts --bundle --platform=node --external:electron --outfile=dist/main.js --format=cjs && esbuild src/preload.ts --bundle --platform=node --external:electron --outfile=dist/preload.js --format=cjs && esbuild src/index.tsx --bundle --outfile=dist/renderer.js --loader:.js=jsx --define:process.env.NODE_ENV='\"development\"' && tailwindcss -i src/styles.css -o dist/tailwind.css",
     "dist": "npm run build && electron-builder --mac --dir",
     "setup:build": "esbuild src/setup/install.ts --bundle --platform=node --loader:.lua=text --outfile=dist/setup.js --format=cjs",
     "setup": "npm run setup:build && node dist/setup.js"
@@ -14,13 +14,19 @@
     "@ff-labs/fff-node": "^0.9.6",
     "@modelcontextprotocol/sdk": "^1.0.4",
     "@upstash/context7-mcp": "^1.0.14",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
     "highlight.js": "^11.11.1",
+    "lucide-react": "^1.24.0",
     "openai": "^4.77.0",
+    "radix-ui": "^1.6.2",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "tailwind-merge": "^3.6.0",
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@tailwindcss/cli": "^4.3.2",
     "@types/node": "^20.0.0",
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
@@ -28,6 +34,7 @@
     "electron": "^27.0.0",
     "electron-builder": "^24.13.3",
     "esbuild": "^0.19.0",
+    "tailwindcss": "^4.3.2",
     "typescript": "^5.0.0"
   },
   "build": {

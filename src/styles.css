@@ -1,0 +1,53 @@
+@import "tailwindcss";
+
+/* viking theme mapped onto shadcn tokens — dark translucent overlay, acid accent */
+:root {
+  --background: transparent;
+  --foreground: #f4f1ea;
+  --card: rgba(8, 8, 10, 0.48);
+  --card-foreground: #f4f1ea;
+  --popover: rgba(8, 8, 10, 0.9);
+  --popover-foreground: #f4f1ea;
+  --primary: #d4ff00;
+  --primary-foreground: #0a0a0a;
+  --secondary: rgba(244, 241, 234, 0.08);
+  --secondary-foreground: #f4f1ea;
+  --muted: rgba(244, 241, 234, 0.08);
+  --muted-foreground: rgba(244, 241, 234, 0.45);
+  --accent: rgba(244, 241, 234, 0.08);
+  --accent-foreground: #f4f1ea;
+  --destructive: #ff7676;
+  --destructive-foreground: #0a0a0a;
+  --border: rgba(244, 241, 234, 0.08);
+  --input: rgba(244, 241, 234, 0.14);
+  --ring: #d4ff00;
+  --radius: 0.5rem;
+}
+
+@theme inline {
+  --font-sans: "JetBrains Mono", ui-monospace, monospace;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
