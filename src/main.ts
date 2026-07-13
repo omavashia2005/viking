@@ -55,21 +55,34 @@ const SIZES = {
   spotlight: { w: 600, h: 64, y: 80 },
   full: { w: 720, h: 460, y: 16 },
 };
+// User-resizable bounds for 'full' mode; content lays itself out inside whatever
+// size the user picks, so min must comfortably fit settings/results chrome.
+const MIN = { w: 560, h: 340 };
+const MAX = { w: 1200, h: 840 };
+let fullSize = { w: SIZES.full.w, h: SIZES.full.h }; // last size the user set in 'full'
 
-// Resize only when switching modes; if the user dragged the window bigger in 'full', keep it.
+// Resize only when switching modes; 'full' restores the user's last size.
 function setMode(next: 'spotlight' | 'full'): void {
   if (!win || mode === next) return;
   mode = next;
   const { width } = screen.getPrimaryDisplay().workAreaSize;
-  const { w, h, y } = SIZES[next];
-  win.setBounds({ x: Math.round((width - w) / 2), y, width: w, height: h });
+  if (next === 'spotlight') {
+    win.setResizable(false);
+    win.setMinimumSize(SIZES.spotlight.w, SIZES.spotlight.h);
+    win.setBounds({ x: Math.round((width - SIZES.spotlight.w) / 2), y: SIZES.spotlight.y, width: SIZES.spotlight.w, height: SIZES.spotlight.h });
+  } else {
+    win.setMinimumSize(MIN.w, MIN.h);
+    win.setResizable(true);
+    win.setBounds({ x: Math.round((width - fullSize.w) / 2), y: SIZES.full.y, width: fullSize.w, height: fullSize.h });
+  }
 }
 
 function createWindow(): BrowserWindow {
   const { width } = screen.getPrimaryDisplay().workAreaSize;
   const { w, h, y } = SIZES.full;
   const w0 = new BrowserWindow({
-    width: w, height: h, minWidth: 420, minHeight: 64,
+    width: w, height: h,
+    minWidth: MIN.w, minHeight: MIN.h, maxWidth: MAX.w, maxHeight: MAX.h,
     x: Math.round((width - w) / 2), y,
     transparent: true, frame: false, resizable: true, movable: true,
     alwaysOnTop: true, skipTaskbar: true, hasShadow: false, show: false,
@@ -78,6 +91,11 @@ function createWindow(): BrowserWindow {
   });
   w0.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
   w0.setAlwaysOnTop(true, 'screen-saver');
+  w0.on('resized', () => {
+    if (mode !== 'full') return;
+    const b = w0.getBounds();
+    fullSize = { w: b.width, h: b.height };
+  });
   w0.loadFile('public/index.html');
   if (process.env.VIKING_DEVTOOLS) w0.webContents.openDevTools({ mode: 'detach' });
   w0.webContents.on('render-process-gone', (_e, d) => console.error('[viking] renderer gone:', d));
@@ -168,12 +186,12 @@ app.whenReady().then(() => {
 
   ipcMain.on('viking:submit', (_e, payload: { prompt: string; refineFrom?: Option }) => run(payload.prompt, payload.refineFrom));
   ipcMain.on('viking:setActive', (_e, idx: number) => { activeIdx = idx; });
+  ipcMain.on('viking:expand', () => setMode('full'));
+  // Spotlight only: grow with the typed prompt. In 'full' the user owns the size.
   ipcMain.on('viking:resize', (_e, height: number) => {
-    if (!win) return;
+    if (!win || mode !== 'spotlight') return;
     const b = win.getBounds();
-    if (height <= b.height) return; // only grow — preserves user-resize
-    const max = screen.getPrimaryDisplay().workAreaSize.height - 40;
-    win.setBounds({ ...b, height: Math.min(Math.ceil(height), max) });
+    win.setBounds({ ...b, height: Math.min(Math.max(Math.ceil(height), SIZES.spotlight.h), 300) });
   });
   ipcMain.on('viking:hide', hide);
   ipcMain.handle('viking:getSettings', () => ({ llm: { ...config.llm }, hotkeys: { ...config.hotkeys }, theme: config.theme }));

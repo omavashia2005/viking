@@ -25,7 +25,8 @@ declare global {
       on: (ch: string, fn: (...a: any[]) => void) => void;
       submit: (p: { prompt: string; refineFrom?: Option }) => void;
       setActive: (idx: number) => void;
-      resize: (height: number) => void;
+      expand: () => void;
+      resize: (height: number) => void; // spotlight-only prompt growth
       hide: () => void;
       getSettings: () => Promise<{ llm: LLM; hotkeys: Hotkeys; theme: Theme }>;
       saveSettings: (s: { llm?: Partial<LLM>; hotkeys?: Partial<Hotkeys>; theme?: Theme }) => Promise<void>;
@@ -122,7 +123,7 @@ export default function App(): JSX.Element {
         if (THEMES.includes(s.theme)) setTheme(s.theme);
         setSaved(false);
         setPhase(e.key.toLowerCase() === 'k' ? 'keymaps' : 'provider');
-        window.viking.resize(380);
+        window.viking.expand();
         // mark ready after the populated state has flushed, so the autosave effect skips the load.
         setTimeout(() => { settingsReady.current = true; }, 0);
         return;
@@ -157,19 +158,6 @@ export default function App(): JSX.Element {
     // across the newline. Swap for per-line highlighting if visible in real snippets.
     return html.split('\n');
   }, [current]);
-
-  // Grow window to fit the rendered code, capped in main.
-  useEffect(() => {
-    if (phase !== 'results' || !current) return;
-    requestAnimationFrame(() => {
-      const bar = document.querySelector('.bar') as HTMLElement | null;
-      const head = document.querySelector('.codehead') as HTMLElement | null;
-      const code = document.querySelector('.code') as HTMLElement | null;
-      if (!code) return;
-      const want = (bar?.offsetHeight ?? 36) + (head?.offsetHeight ?? 36) + code.scrollHeight + 24;
-      window.viking.resize(want);
-    });
-  }, [phase, active, highlightedLines, current]);
 
   if (phase === 'hidden') return <div style={{ display: 'none' }} />;
 
@@ -247,7 +235,6 @@ export default function App(): JSX.Element {
           ]}
         />
       )}
-      <div className="grip" />
       {alertEl}
     </div>
   );
