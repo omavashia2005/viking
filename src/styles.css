@@ -117,6 +117,7 @@
 .settings label { display: flex; flex-direction: column; gap: 5px; }
 .settings label span { color: var(--muted-foreground); font-size: 10.5px;
   text-transform: lowercase; letter-spacing: 0.16em; }
+.settings input[type="range"] { width: 100%; accent-color: var(--primary); }
 .srow { display: flex; align-items: center; gap: 14px; margin-top: 6px; }
 .autosave { color: var(--primary); font-size: 11px; letter-spacing: 0.1em;
   text-transform: lowercase; transition: opacity 200ms ease; }

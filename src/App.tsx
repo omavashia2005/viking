@@ -28,8 +28,8 @@ declare global {
       expand: () => void;
       resize: (height: number) => void; // spotlight-only prompt growth
       hide: () => void;
-      getSettings: () => Promise<{ llm: LLM; hotkeys: Hotkeys; theme: Theme }>;
-      saveSettings: (s: { llm?: Partial<LLM>; hotkeys?: Partial<Hotkeys>; theme?: Theme }) => Promise<void>;
+      getSettings: () => Promise<{ llm: LLM; hotkeys: Hotkeys; theme: Theme; opacity: number }>;
+      saveSettings: (s: { llm?: Partial<LLM>; hotkeys?: Partial<Hotkeys>; theme?: Theme; opacity?: number }) => Promise<void>;
     };
   }
 }
@@ -47,6 +47,7 @@ export default function App(): JSX.Element {
   const [hotkeys, setHotkeys] = useState<Hotkeys>({ open: '', settings: '', close: '', copy: '' });
   const [toolCalls, setToolCalls] = useState<ToolCallEntry[]>([]);
   const [theme, setTheme] = useState<Theme>('onyx');
+  const [opacity, setOpacity] = useState(0.62);
   const [saved, setSaved] = useState(false);
   const settingsReady = useRef(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -76,10 +77,14 @@ export default function App(): JSX.Element {
       setOptions(p.options); setActive(0); setPhase('results');
     });
     window.viking.on('viking:reset', () => setPhase('hidden'));
-    window.viking.getSettings().then(s => { if (THEMES.includes(s.theme)) setTheme(s.theme); });
+    window.viking.getSettings().then(s => {
+      if (THEMES.includes(s.theme)) setTheme(s.theme);
+      if (typeof s.opacity === 'number') setOpacity(s.opacity);
+    });
   }, []);
 
   useEffect(() => { document.documentElement.dataset.theme = theme; }, [theme]);
+  useEffect(() => { document.documentElement.style.setProperty('--glass-alpha', String(opacity)); }, [opacity]);
 
   useEffect(() => { window.viking.setActive(active); }, [active]);
 
@@ -101,11 +106,11 @@ export default function App(): JSX.Element {
     if (!settingsReady.current) return;
     let cancelled = false;
     const t = setTimeout(async () => {
-      await window.viking.saveSettings({ llm, hotkeys, theme });
+      await window.viking.saveSettings({ llm, hotkeys, theme, opacity });
       if (!cancelled) { setSaved(true); setTimeout(() => setSaved(false), 1200); }
     }, 250);
     return () => { cancelled = true; clearTimeout(t); };
-  }, [llm, hotkeys, theme]);
+  }, [llm, hotkeys, theme, opacity]);
 
   useEffect(() => {
     const onKey = async (e: KeyboardEvent) => {
@@ -115,14 +120,16 @@ export default function App(): JSX.Element {
       // q closes when no input is focused; Esc kept as the escape-hatch while typing.
       if (!editable && (e.key === 'q' || e.key === 'Q')) { e.preventDefault(); return window.viking.hide(); }
       if (editable && e.key === 'Escape') return window.viking.hide();
-      if (mod && (e.key.toLowerCase() === 's' || e.key.toLowerCase() === 'k')) {
+      const pane = ({ s: 'provider', k: 'keymaps', t: 'theme' } as const)[e.key.toLowerCase()];
+      if (mod && pane) {
         e.preventDefault();
         settingsReady.current = false;
         const s = await window.viking.getSettings();
         setLlm(s.llm); setHotkeys(s.hotkeys);
         if (THEMES.includes(s.theme)) setTheme(s.theme);
+        if (typeof s.opacity === 'number') setOpacity(s.opacity);
         setSaved(false);
-        setPhase(e.key.toLowerCase() === 'k' ? 'keymaps' : 'provider');
+        setPhase(pane);
         window.viking.expand();
         // mark ready after the populated state has flushed, so the autosave effect skips the load.
         setTimeout(() => { settingsReady.current = true; }, 0);
@@ -212,21 +219,25 @@ export default function App(): JSX.Element {
       {phase === 'provider' && (
         <SettingsPanel
           saved={saved}
-          hint="q to close · ⌘K for keymaps"
+          hint="q to close · ⌘K keymaps · ⌘T theme"
           fields={[
             { label: 'base url', value: llm.baseURL, onChange: v => setLlm({ ...llm, baseURL: v }), placeholder: 'https://api.openai.com/v1', autoFocus: true },
             { label: 'api key', value: llm.apiKey, onChange: v => setLlm({ ...llm, apiKey: v }), placeholder: 'sk-…', type: 'password' },
             { label: 'model', value: llm.model, onChange: v => setLlm({ ...llm, model: v }), placeholder: 'gpt-4o' },
           ]}
-        >
-          <ThemePicker theme={theme} onChange={setTheme} />
+        />
+      )}
+
+      {phase === 'theme' && (
+        <SettingsPanel saved={saved} hint="q to close · ⌘S provider · ⌘K keymaps" fields={[]}>
+          <ThemePicker theme={theme} onChange={setTheme} opacity={opacity} onOpacity={setOpacity} />
         </SettingsPanel>
       )}
 
       {phase === 'keymaps' && (
         <SettingsPanel
           saved={saved}
-          hint="q to close · ⌘S for provider"
+          hint="q to close · ⌘S provider · ⌘T theme"
           fields={[
             { label: 'open prompt (global)', value: hotkeys.open, onChange: v => setHotkeys({ ...hotkeys, open: v }), placeholder: 'CommandOrControl+I', autoFocus: true },
             { label: 'open settings (window)', value: hotkeys.settings, onChange: v => setHotkeys({ ...hotkeys, settings: v }), placeholder: 'CommandOrControl+K' },

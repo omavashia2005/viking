@@ -17,6 +17,7 @@ export function TitleBar({ phase, options, active, onSelect }: {
       {phase === 'error' && <span className="state err">error</span>}
       {phase === 'provider' && <span className="state">provider</span>}
       {phase === 'keymaps' && <span className="state">keymaps</span>}
+      {phase === 'theme' && <span className="state">theme</span>}
       {phase === 'results' && (
         <nav className="tabs">
           {options.map((o, i) => (

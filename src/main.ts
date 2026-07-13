@@ -30,20 +30,22 @@ if (!app.requestSingleInstanceLock()) {
 
 const settingsFile = () => path.join(app.getPath('userData'), 'viking-settings.json');
 // ponytail: plaintext api key on disk under the user's app data. Swap for keytar if shared machines matter.
-type Persisted = { llm?: Partial<typeof config.llm>; hotkeys?: Partial<typeof config.hotkeys>; theme?: string };
+type Persisted = { llm?: Partial<typeof config.llm>; hotkeys?: Partial<typeof config.hotkeys>; theme?: string; opacity?: number };
 function loadSettings(): void {
   try {
     const j: Persisted = JSON.parse(fs.readFileSync(settingsFile(), 'utf8'));
     if (j.llm) Object.assign(config.llm, j.llm);
     if (j.hotkeys) Object.assign(config.hotkeys, j.hotkeys);
     if (j.theme) config.theme = j.theme;
+    if (typeof j.opacity === 'number') config.opacity = j.opacity;
   } catch {}
 }
 function saveSettings(s: Persisted): void {
   if (s.llm) Object.assign(config.llm, s.llm);
   if (s.hotkeys) Object.assign(config.hotkeys, s.hotkeys);
   if (s.theme) config.theme = s.theme;
-  fs.writeFileSync(settingsFile(), JSON.stringify({ llm: config.llm, hotkeys: config.hotkeys, theme: config.theme }, null, 2));
+  if (typeof s.opacity === 'number') config.opacity = Math.min(Math.max(s.opacity, 0), 1);
+  fs.writeFileSync(settingsFile(), JSON.stringify({ llm: config.llm, hotkeys: config.hotkeys, theme: config.theme, opacity: config.opacity }, null, 2));
 }
 
 let win: BrowserWindow | null = null;
@@ -194,7 +196,7 @@ app.whenReady().then(() => {
     win.setBounds({ ...b, height: Math.min(Math.max(Math.ceil(height), SIZES.spotlight.h), 300) });
   });
   ipcMain.on('viking:hide', hide);
-  ipcMain.handle('viking:getSettings', () => ({ llm: { ...config.llm }, hotkeys: { ...config.hotkeys }, theme: config.theme }));
+  ipcMain.handle('viking:getSettings', () => ({ llm: { ...config.llm }, hotkeys: { ...config.hotkeys }, theme: config.theme, opacity: config.opacity }));
   ipcMain.handle('viking:saveSettings', (_e, s: Persisted) => {
     const prevOpen = config.hotkeys.open;
     saveSettings(s);

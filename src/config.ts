@@ -16,6 +16,7 @@ export const config = {
     model: process.env.LLM_MODEL ?? 'gpt-4o',
   },
   theme: 'onyx', // overlay theme; see src/themes.css for the available blocks
+  opacity: 0.62, // overlay glass opacity, 0..1
   numOptions: 4,
   // Default doc lookup; user retunes by editing.
   // ponytail: single language for v0, add detection from screenshot when one language stops being enough.

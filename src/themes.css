@@ -4,9 +4,10 @@
 /* onyx — black translucent glass, monochrome; the accent is pure white so
    highlights read as brightness, not hue */
 :root {
+  --glass-alpha: 0.62; /* overlay glass opacity; user-tunable from the theme page */
   --background: transparent;
   --foreground: #f2f2f2;
-  --card: rgba(0, 0, 0, 0.62);
+  --card: rgba(0, 0, 0, var(--glass-alpha));
   --card-foreground: #f2f2f2;
   --popover: rgba(0, 0, 0, 0.88);
   --popover-foreground: #f2f2f2;
@@ -30,7 +31,7 @@
 /* acid — the original viking look: warm cream on smoked glass, acid-green accent */
 [data-theme="acid"] {
   --foreground: #f4f1ea;
-  --card: rgba(8, 8, 10, 0.48);
+  --card: rgba(8, 8, 10, var(--glass-alpha));
   --card-foreground: #f4f1ea;
   --popover: rgba(8, 8, 10, 0.9);
   --popover-foreground: #f4f1ea;
