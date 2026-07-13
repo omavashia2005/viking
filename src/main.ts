@@ -30,18 +30,20 @@ if (!app.requestSingleInstanceLock()) {
 
 const settingsFile = () => path.join(app.getPath('userData'), 'viking-settings.json');
 // ponytail: plaintext api key on disk under the user's app data. Swap for keytar if shared machines matter.
-type Persisted = { llm?: Partial<typeof config.llm>; hotkeys?: Partial<typeof config.hotkeys> };
+type Persisted = { llm?: Partial<typeof config.llm>; hotkeys?: Partial<typeof config.hotkeys>; theme?: string };
 function loadSettings(): void {
   try {
     const j: Persisted = JSON.parse(fs.readFileSync(settingsFile(), 'utf8'));
     if (j.llm) Object.assign(config.llm, j.llm);
     if (j.hotkeys) Object.assign(config.hotkeys, j.hotkeys);
+    if (j.theme) config.theme = j.theme;
   } catch {}
 }
 function saveSettings(s: Persisted): void {
   if (s.llm) Object.assign(config.llm, s.llm);
   if (s.hotkeys) Object.assign(config.hotkeys, s.hotkeys);
-  fs.writeFileSync(settingsFile(), JSON.stringify({ llm: config.llm, hotkeys: config.hotkeys }, null, 2));
+  if (s.theme) config.theme = s.theme;
+  fs.writeFileSync(settingsFile(), JSON.stringify({ llm: config.llm, hotkeys: config.hotkeys, theme: config.theme }, null, 2));
 }
 
 let win: BrowserWindow | null = null;
@@ -174,7 +176,7 @@ app.whenReady().then(() => {
     win.setBounds({ ...b, height: Math.min(Math.ceil(height), max) });
   });
   ipcMain.on('viking:hide', hide);
-  ipcMain.handle('viking:getSettings', () => ({ llm: { ...config.llm }, hotkeys: { ...config.hotkeys } }));
+  ipcMain.handle('viking:getSettings', () => ({ llm: { ...config.llm }, hotkeys: { ...config.hotkeys }, theme: config.theme }));
   ipcMain.handle('viking:saveSettings', (_e, s: Persisted) => {
     const prevOpen = config.hotkeys.open;
     saveSettings(s);

@@ -10,10 +10,11 @@ export type SettingsField = {
   autoFocus?: boolean;
 };
 
-export function SettingsPanel({ fields, saved, hint }: {
+export function SettingsPanel({ fields, saved, hint, children }: {
   fields: SettingsField[];
   saved: boolean;
   hint: string;
+  children?: React.ReactNode; // extra controls rendered after the fields
 }): JSX.Element {
   return (
     <div className="settings">
@@ -31,6 +32,7 @@ export function SettingsPanel({ fields, saved, hint }: {
           />
         </label>
       ))}
+      {children}
       <div className="srow">
         <span className="autosave">{saved ? '✓ saved' : 'autosaves as you type'}</span>
         <span className="shint">{hint}</span>

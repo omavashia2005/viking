@@ -1,29 +1,5 @@
 @import "tailwindcss";
-
-/* viking theme mapped onto shadcn tokens — dark translucent overlay, acid accent */
-:root {
-  --background: transparent;
-  --foreground: #f4f1ea;
-  --card: rgba(8, 8, 10, 0.48);
-  --card-foreground: #f4f1ea;
-  --popover: rgba(8, 8, 10, 0.9);
-  --popover-foreground: #f4f1ea;
-  --primary: #d4ff00;
-  --primary-foreground: #0a0a0a;
-  --secondary: rgba(244, 241, 234, 0.08);
-  --secondary-foreground: #f4f1ea;
-  --muted: rgba(244, 241, 234, 0.08);
-  --muted-foreground: rgba(244, 241, 234, 0.45);
-  --accent: rgba(244, 241, 234, 0.08);
-  --accent-foreground: #f4f1ea;
-  --destructive: #ff7676;
-  --destructive-foreground: #0a0a0a;
-  --warning: #e0a341;
-  --border: rgba(244, 241, 234, 0.08);
-  --input: rgba(244, 241, 234, 0.14);
-  --ring: #d4ff00;
-  --radius: 0.5rem;
-}
+@import "./themes.css";
 
 @theme inline {
   --font-sans: "JetBrains Mono", ui-monospace, monospace;
