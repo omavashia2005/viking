@@ -1,11 +1,14 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import hljs from 'highlight.js/lib/common';
 import type { Option } from './shared-types';
-import { Button } from '@/components/ui/button';
 import { CodeView } from '@/components/CodeView';
+import { ErrorView } from '@/components/ErrorView';
 import { SettingsPanel } from '@/components/SettingsPanel';
 import { SoftAlert } from '@/components/SoftAlert';
+import { Spotlight } from '@/components/Spotlight';
+import { TitleBar } from '@/components/TitleBar';
 import { ToolCallLog, type ToolCallEntry } from '@/components/ToolCallLog';
+import type { Hotkeys, LLM, Phase } from '@/components/types';
 
 declare global {
   interface Window {
@@ -20,10 +23,6 @@ declare global {
     };
   }
 }
-
-type Phase = 'hidden' | 'textbox' | 'loading' | 'results' | 'error' | 'provider' | 'keymaps';
-type LLM = { baseURL: string; apiKey: string; model: string };
-type Hotkeys = { open: string; settings: string; close: string; copy: string };
 
 export default function App(): JSX.Element {
   const [phase, setPhase] = useState<Phase>('hidden');
@@ -164,69 +163,22 @@ export default function App(): JSX.Element {
 
   // Spotlight layout for textbox / follow-up phase
   if (phase === 'textbox') {
-    const growTextarea = (el: HTMLTextAreaElement) => {
-      el.style.height = 'auto';
-      el.style.height = `${el.scrollHeight}px`;
-      window.viking.resize(el.scrollHeight + 48);
-    };
     return (
-      <div className="spot">
-        <form
-          className="prompt"
-          onSubmit={e => {
-            e.preventDefault();
-            if (prompt.trim()) window.viking.submit({ prompt: prompt.trim(), refineFrom });
-          }}
-        >
-          <span className="caret">›</span>
-          <textarea
-            ref={inputRef}
-            value={prompt}
-            onChange={e => { setPrompt(e.target.value); growTextarea(e.target); }}
-            onKeyDown={e => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                if (prompt.trim()) window.viking.submit({ prompt: prompt.trim(), refineFrom });
-              }
-            }}
-            rows={1}
-            placeholder={refineFrom ? `refine "${refineFrom.label}"…` : 'how do I…'}
-            spellCheck={false}
-            autoFocus
-          />
-          {refineFrom && <span className="chip">↻ {refineFrom.language}</span>}
-        </form>
+      <Spotlight
+        prompt={prompt}
+        refineFrom={refineFrom}
+        inputRef={inputRef}
+        onChange={setPrompt}
+        onSubmit={() => { if (prompt.trim()) window.viking.submit({ prompt: prompt.trim(), refineFrom }); }}
+      >
         {alertEl}
-      </div>
+      </Spotlight>
     );
   }
 
   return (
     <div className="overlay">
-      <header className="bar">
-        <span className="brand">viking</span>
-        <span className="sep">/</span>
-        {phase === 'loading' && <span className="state pulse">gathering context · querying model</span>}
-        {phase === 'error' && <span className="state err">error</span>}
-        {phase === 'provider' && <span className="state">provider</span>}
-        {phase === 'keymaps' && <span className="state">keymaps</span>}
-        {phase === 'results' && (
-          <nav className="tabs">
-            {options.map((o, i) => (
-              <Button
-                key={i}
-                size="sm"
-                variant={i === active ? 'default' : 'outline'}
-                className="h-6 gap-1.5 rounded-full px-2.5 font-normal lowercase text-[10.5px]"
-                onClick={() => setActive(i)}
-              >
-                <span className="text-[9.5px] opacity-55">⌘{i + 1}</span><span>{o.label}</span>
-              </Button>
-            ))}
-          </nav>
-        )}
-        <span className="hint">q</span>
-      </header>
+      <TitleBar phase={phase} options={options} active={active} onSelect={setActive} />
 
       {phase === 'loading' && (
         <div
@@ -249,13 +201,7 @@ export default function App(): JSX.Element {
         />
       )}
 
-      {phase === 'error' && (
-        <div className="errbody">
-          <div className="errhead">something went wrong</div>
-          <div className="errmsg">{error}</div>
-          <div className="errhint">press q to dismiss · then retry with ⌘I</div>
-        </div>
-      )}
+      {phase === 'error' && <ErrorView message={error} />}
 
       {phase === 'provider' && (
         <SettingsPanel

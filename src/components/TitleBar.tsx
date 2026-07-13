@@ -1,15 +1,14 @@
 import React from 'react';
+import { Button } from '@/components/ui/button';
 import type { Option } from '../shared-types';
 import type { Phase } from './types';
 
-type Props = {
+export function TitleBar({ phase, options, active, onSelect }: {
   phase: Phase;
   options: Option[];
   active: number;
   onSelect: (i: number) => void;
-};
-
-export default function TitleBar({ phase, options, active, onSelect }: Props): JSX.Element {
+}): JSX.Element {
   return (
     <header className="bar">
       <span className="brand">viking</span>
@@ -21,9 +20,15 @@ export default function TitleBar({ phase, options, active, onSelect }: Props): J
       {phase === 'results' && (
         <nav className="tabs">
           {options.map((o, i) => (
-            <button key={i} className={`tab ${i === active ? 'on' : ''}`} onClick={() => onSelect(i)}>
-              <span className="num">⌘{i + 1}</span><span>{o.label}</span>
-            </button>
+            <Button
+              key={i}
+              size="sm"
+              variant={i === active ? 'default' : 'outline'}
+              className="h-6 gap-1.5 rounded-full px-2.5 font-normal lowercase text-[10.5px]"
+              onClick={() => onSelect(i)}
+            >
+              <span className="text-[9.5px] opacity-55">⌘{i + 1}</span><span>{o.label}</span>
+            </Button>
           ))}
         </nav>
       )}

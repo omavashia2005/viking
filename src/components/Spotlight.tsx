@@ -10,7 +10,7 @@ type Props = {
   children?: React.ReactNode; // alert slot
 };
 
-export default function Spotlight({ prompt, refineFrom, inputRef, onChange, onSubmit, children }: Props): JSX.Element {
+export function Spotlight({ prompt, refineFrom, inputRef, onChange, onSubmit, children }: Props): JSX.Element {
   const growTextarea = (el: HTMLTextAreaElement) => {
     el.style.height = 'auto';
     el.style.height = `${el.scrollHeight}px`;
