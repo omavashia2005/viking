@@ -3,6 +3,7 @@ import OpenAI from 'openai';
 import { zodResponseFormat } from 'openai/helpers/zod';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
+import { z } from 'zod';
 import { config } from './config';
 import { Context, LLMResponse, type LaunchArgs, type Option } from './shared-types';
 import { prompts } from './prompts';
@@ -127,43 +128,50 @@ function seedContext(launch: LaunchArgs | undefined): { cwd: string; activeFileS
 // ponytail: cap schema-parse retries at 3; raise if models regularly need more nudges to produce valid JSON.
 const MAX_SCHEMA_RETRIES = 3;
 
+const QueryArgs = z.object({ query: z.string() }).passthrough();
+const ReadFileArgs = z.object({
+  path: z.string(),
+  startLine: z.number().optional(),
+  endLine: z.number().optional(),
+}).passthrough();
+const LibraryArgs = z.object({ libraryName: z.string().optional(), libraryId: z.string().optional(), topic: z.string().optional() }).passthrough();
+
+export type ToolSummary =
+  | { type: 'search'; query: string; preview?: string[]; lineCount?: number }
+  | { type: 'read_file'; path: string; startLine?: number; endLine?: number }
+  | { type: 'library'; libraryName?: string; libraryId?: string; topic?: string; preview?: string[] }
+  | { type: 'raw'; args?: Record<string, unknown>; preview?: string[] };
+
 export type ToolProgress = {
   id: string;
   name: string;
   status: 'running' | 'done' | 'error';
   args?: Record<string, unknown>;
-  detail?: string;
+  summary?: ToolSummary;
   error?: string;
 };
 
-function oneLine(value: unknown, max = 180): string {
-  const s = typeof value === 'string' ? value : JSON.stringify(value);
-  return String(s ?? '').replace(/\s+/g, ' ').slice(0, max);
+function preview(result?: string): string[] | undefined {
+  const lines = result?.split('\n').map(line => line.trim()).filter(Boolean).slice(0, 4);
+  return lines?.length ? lines : undefined;
 }
 
-function readTarget(args: Record<string, unknown>): string {
-  const start = typeof args.startLine === 'number' ? args.startLine : undefined;
-  const end = typeof args.endLine === 'number' ? args.endLine : undefined;
-  return `${args.path ?? ''}${start ? `:${start}${end ? `-${end}` : ''}` : ''}`;
-}
-
-function resultFiles(result: string): string {
-  const files = new Set<string>();
-  for (const line of result.split('\n')) {
-    const m = line.match(/^(.+?):\d+[:|]/) ?? line.match(/^-> Read (.+?)(?:\s|$)/) ?? line.match(/^([./\w-][^:\n]*\.\w+)(?:\s|$)/);
-    if (m?.[1]) files.add(m[1]);
-    if (files.size >= 4) break;
+function toolSummary(name: string, args: Record<string, unknown>, result?: string): ToolSummary {
+  if (name === 'grep_codebase' || name === 'find_files') {
+    const parsed = QueryArgs.safeParse(args);
+    return parsed.success
+      ? { type: 'search', query: parsed.data.query, preview: preview(result), lineCount: result?.split('\n').filter(Boolean).length }
+      : { type: 'raw', args, preview: preview(result) };
   }
-  return [...files].join(', ');
-}
-
-function toolDetail(name: string, args: Record<string, unknown>, result?: string): string {
-  if (name === 'grep_codebase') return result ? `query: ${oneLine(args.query)} -> matches: ${resultFiles(result) || 'none'}` : `query: ${oneLine(args.query)}`;
-  if (name === 'find_files') return result ? `query: ${oneLine(args.query)} -> results: ${resultFiles(result) || oneLine(result) || 'none'}` : `query: ${oneLine(args.query)}`;
-  if (name === 'read_file') return `file: ${readTarget(args)}`;
-  if (name === 'resolve_library_id') return result ? `resolved: ${oneLine(result)}` : `library: ${oneLine(args.libraryName)}`;
-  if (name === 'get_library_docs') return `docs: ${oneLine(args.libraryId)} ${oneLine(args.topic)}`;
-  return result ? oneLine(result) : oneLine(args);
+  if (name === 'read_file') {
+    const parsed = ReadFileArgs.safeParse(args);
+    return parsed.success ? { type: 'read_file', ...parsed.data } : { type: 'raw', args, preview: preview(result) };
+  }
+  if (name === 'resolve_library_id' || name === 'get_library_docs') {
+    const parsed = LibraryArgs.safeParse(args);
+    return parsed.success ? { type: 'library', ...parsed.data, preview: preview(result) } : { type: 'raw', args, preview: preview(result) };
+  }
+  return { type: 'raw', args, preview: preview(result) };
 }
 
 export async function generate(userPrompt: string | undefined, screenshot: string | undefined, launch?: LaunchArgs, onTool?: (event: ToolProgress) => void): Promise<{ options: Option[]; softError?: string }> {
@@ -227,16 +235,16 @@ export async function generate(userPrompt: string | undefined, screenshot: strin
         } catch (e) {
           const errMsg = `error: invalid JSON in tool arguments: ${(e as Error).message}`;
           console.log(`[viking:llm] tool r${rounds} → ${call.function.name} [bad args]`, call.function.arguments);
-          onTool?.({ id: call.id, name: call.function.name, status: 'error', detail: errMsg, error: errMsg });
+          onTool?.({ id: call.id, name: call.function.name, status: 'error', error: errMsg });
           messages.push({ role: 'tool', tool_call_id: call.id, content: errMsg });
           continue;
         }
         console.log(`[viking:llm] tool r${rounds} → ${call.function.name}`, args);
-        onTool?.({ id: call.id, name: call.function.name, status: 'running', args, detail: toolDetail(call.function.name, args) });
+        onTool?.({ id: call.id, name: call.function.name, status: 'running', args, summary: toolSummary(call.function.name, args) });
         const result = await runTool(call.function.name, args, fff, cwd);
         console.log(`[viking:llm] tool r${rounds} ← ${call.function.name}`, result.slice(0, 400) + (result.length > 400 ? `… (${result.length}b)` : ''));
         const failed = result.startsWith('error:');
-        onTool?.({ id: call.id, name: call.function.name, status: failed ? 'error' : 'done', detail: failed ? result : toolDetail(call.function.name, args, result), error: failed ? result : undefined });
+        onTool?.({ id: call.id, name: call.function.name, status: failed ? 'error' : 'done', summary: failed ? undefined : toolSummary(call.function.name, args, result), error: failed ? result : undefined });
         messages.push({ role: 'tool', tool_call_id: call.id, content: result });
       }
     }

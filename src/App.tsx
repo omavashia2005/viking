@@ -8,14 +8,15 @@ import { SoftAlert } from '@/components/SoftAlert';
 import { Spotlight } from '@/components/Spotlight';
 import { TitleBar } from '@/components/TitleBar';
 import { ToolCallLog, type ToolCallEntry } from '@/components/ToolCallLog';
-import type { Hotkeys, LLM, Phase } from '@/components/types';
+import { ThemePicker } from '@/components/ThemePicker';
+import { THEMES, type Hotkeys, type LLM, type Phase, type Theme } from '@/components/types';
 
 type ToolCallEvent = {
   id: string;
   name: string;
   status: ToolCallEntry['status'];
   args?: Record<string, unknown>;
-  detail?: string;
+  summary?: ToolCallEntry['summary'];
   error?: string;
 };
 
@@ -35,8 +36,8 @@ declare global {
       setActive: (idx: number) => void;
       resize: (height: number) => void;
       hide: () => void;
-      getSettings: () => Promise<{ llm: LLM; hotkeys: Hotkeys }>;
-      saveSettings: (s: { llm?: Partial<LLM>; hotkeys?: Partial<Hotkeys> }) => Promise<void>;
+      getSettings: () => Promise<{ llm: LLM; hotkeys: Hotkeys; theme: Theme }>;
+      saveSettings: (s: { llm?: Partial<LLM>; hotkeys?: Partial<Hotkeys>; theme?: Theme }) => Promise<void>;
     };
   }
 }
@@ -53,6 +54,7 @@ export default function App(): JSX.Element {
   const [llm, setLlm] = useState<LLM>({ baseURL: '', apiKey: '', model: '' });
   const [hotkeys, setHotkeys] = useState<Hotkeys>({ open: '', settings: '', close: '', copy: '' });
   const [toolCalls, setToolCalls] = useState<ToolCallEntry[]>([]);
+  const [theme, setTheme] = useState<Theme>('onyx');
   const [saved, setSaved] = useState(false);
   const settingsReady = useRef(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -80,7 +82,10 @@ export default function App(): JSX.Element {
       setOptions(p.options); setActive(0); setPhase('results');
     });
     window.viking.on('viking:reset', () => setPhase('hidden'));
+    window.viking.getSettings().then(s => { if (THEMES.includes(s.theme)) setTheme(s.theme); });
   }, []);
+
+  useEffect(() => { document.documentElement.dataset.theme = theme; }, [theme]);
 
   useEffect(() => { window.viking.setActive(active); }, [active]);
 
@@ -96,11 +101,11 @@ export default function App(): JSX.Element {
     if (!settingsReady.current) return;
     let cancelled = false;
     const t = setTimeout(async () => {
-      await window.viking.saveSettings({ llm, hotkeys });
+      await window.viking.saveSettings({ llm, hotkeys, theme });
       if (!cancelled) { setSaved(true); setTimeout(() => setSaved(false), 1200); }
     }, 250);
     return () => { cancelled = true; clearTimeout(t); };
-  }, [llm, hotkeys]);
+  }, [llm, hotkeys, theme]);
 
   useEffect(() => {
     const onKey = async (e: KeyboardEvent) => {
@@ -115,6 +120,7 @@ export default function App(): JSX.Element {
         settingsReady.current = false;
         const s = await window.viking.getSettings();
         setLlm(s.llm); setHotkeys(s.hotkeys);
+        if (THEMES.includes(s.theme)) setTheme(s.theme);
         setSaved(false);
         setPhase(e.key.toLowerCase() === 'k' ? 'keymaps' : 'provider');
         window.viking.resize(380);
@@ -221,7 +227,9 @@ export default function App(): JSX.Element {
             { label: 'api key', value: llm.apiKey, onChange: v => setLlm({ ...llm, apiKey: v }), placeholder: 'sk-…', type: 'password' },
             { label: 'model', value: llm.model, onChange: v => setLlm({ ...llm, model: v }), placeholder: 'gpt-4o' },
           ]}
-        />
+        >
+          <ThemePicker theme={theme} onChange={setTheme} />
+        </SettingsPanel>
       )}
 
       {phase === 'keymaps' && (
