@@ -49,6 +49,8 @@ export default function App(): JSX.Element {
   const [saved, setSaved] = useState(false);
   const settingsReady = useRef(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const logRef = useRef<HTMLDivElement>(null);
+  const stickToBottom = useRef(true);
 
   useEffect(() => {
     if (!window.viking) {
@@ -62,7 +64,7 @@ export default function App(): JSX.Element {
       setRefineFrom(mode === 'followup' ? refineFrom : undefined);
       setTimeout(() => inputRef.current?.focus(), 50);
     });
-    window.viking.on('viking:loading', () => { setSoftError(''); setToolCalls([]); setPhase('loading'); });
+    window.viking.on('viking:loading', () => { setSoftError(''); setToolCalls([]); stickToBottom.current = true; setPhase('loading'); });
     window.viking.on('viking:tool', (event: ToolProgress) => setToolCalls(prev => mergeToolCall(prev, event)));
     window.viking.on('viking:result', (p: { options: Option[]; error?: string; softError?: string }) => {
       if (p.error) { setError(p.error); setPhase('error'); return; }
@@ -79,6 +81,12 @@ export default function App(): JSX.Element {
   useEffect(() => { document.documentElement.dataset.theme = theme; }, [theme]);
 
   useEffect(() => { window.viking.setActive(active); }, [active]);
+
+  // Follow the tool log as it grows, unless the user scrolled away from the bottom.
+  useEffect(() => {
+    const el = logRef.current;
+    if (phase === 'loading' && el && stickToBottom.current) el.scrollTop = el.scrollHeight;
+  }, [phase, toolCalls]);
 
   // Auto-dismiss the soft alert after ~5s. Timer resets whenever a new softError arrives.
   useEffect(() => {
@@ -188,8 +196,12 @@ export default function App(): JSX.Element {
 
       {phase === 'loading' && (
         <div
-          className="loading"
-          style={{ display: 'block', padding: 18, overflowY: 'auto', textTransform: 'none', letterSpacing: 0 }}
+          className="toollog"
+          ref={logRef}
+          onScroll={e => {
+            const el = e.currentTarget;
+            stickToBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 24;
+          }}
         >
           <ToolCallLog calls={toolCalls} />
         </div>

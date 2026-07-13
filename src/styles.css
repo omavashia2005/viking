@@ -71,8 +71,10 @@
   letter-spacing: 0.1em; border: 1px solid color-mix(in srgb, var(--primary) 35%, transparent);
   padding: 2px 8px; border-radius: 999px; }
 
-.loading { flex: 1; display: grid; place-items: center; color: var(--muted-foreground);
-  text-transform: lowercase; letter-spacing: 0.18em; font-size: 11px; }
+.toollog { flex: 1; min-height: 0; padding: 18px; overflow-y: auto;
+  -webkit-app-region: no-drag;
+  contain: paint; transform: translateZ(0); will-change: scroll-position;
+  overscroll-behavior: contain; scrollbar-gutter: stable; }
 
 .codewrap { flex: 1; display: flex; flex-direction: column; min-height: 0; -webkit-app-region: no-drag; }
 .codehead { display: flex; align-items: center; justify-content: space-between;
@@ -95,11 +97,11 @@
   font-variant-numeric: tabular-nums; -webkit-user-select: none; }
 .lc { white-space: pre-wrap; word-break: break-word; min-width: 0; }
 /* shared scrollbar treatment — thinner, less paint-heavy */
-.code::-webkit-scrollbar, .settings::-webkit-scrollbar, .prompt textarea::-webkit-scrollbar { width: 6px; height: 6px; }
-.code::-webkit-scrollbar-track, .settings::-webkit-scrollbar-track, .prompt textarea::-webkit-scrollbar-track { background: transparent; }
-.code::-webkit-scrollbar-thumb, .settings::-webkit-scrollbar-thumb, .prompt textarea::-webkit-scrollbar-thumb {
+.code::-webkit-scrollbar, .settings::-webkit-scrollbar, .toollog::-webkit-scrollbar, .prompt textarea::-webkit-scrollbar { width: 6px; height: 6px; }
+.code::-webkit-scrollbar-track, .settings::-webkit-scrollbar-track, .toollog::-webkit-scrollbar-track, .prompt textarea::-webkit-scrollbar-track { background: transparent; }
+.code::-webkit-scrollbar-thumb, .settings::-webkit-scrollbar-thumb, .toollog::-webkit-scrollbar-thumb, .prompt textarea::-webkit-scrollbar-thumb {
   background: color-mix(in srgb, var(--foreground) 14%, transparent); border-radius: 3px; transition: background 120ms ease; }
-.code::-webkit-scrollbar-thumb:hover, .settings::-webkit-scrollbar-thumb:hover, .prompt textarea::-webkit-scrollbar-thumb:hover {
+.code::-webkit-scrollbar-thumb:hover, .settings::-webkit-scrollbar-thumb:hover, .toollog::-webkit-scrollbar-thumb:hover, .prompt textarea::-webkit-scrollbar-thumb:hover {
   background: color-mix(in srgb, var(--foreground) 32%, transparent); }
 
 .errbody { flex: 1; padding: 28px 26px; display: flex; flex-direction: column;
