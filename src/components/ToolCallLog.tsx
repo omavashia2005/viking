@@ -2,21 +2,9 @@ import React from 'react';
 import { CheckIcon, TriangleAlertIcon } from 'lucide-react';
 import { Marker, MarkerContent, MarkerIcon } from '@/components/ui/marker';
 import { Spinner } from '@/components/ui/spinner';
+import type { ToolProgress, ToolSummary } from '../shared-types';
 
-export type ToolSummary =
-  | { type: 'search'; query: string; preview?: string[]; lineCount?: number }
-  | { type: 'read_file'; path: string; startLine?: number; endLine?: number }
-  | { type: 'library'; libraryName?: string; libraryId?: string; topic?: string; preview?: string[] }
-  | { type: 'raw'; args?: Record<string, unknown>; preview?: string[] };
-
-export type ToolCallEntry = {
-  id: string;
-  name: string;
-  status: 'running' | 'done' | 'error';
-  args?: Record<string, unknown>;
-  summary?: ToolSummary;
-  error?: string;
-};
+export type ToolCallEntry = ToolProgress;
 
 function clip(s: string): string {
   return s.length > 180 ? `${s.slice(0, 180)}...` : s;

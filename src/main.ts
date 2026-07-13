@@ -2,8 +2,8 @@ import { app, BrowserWindow, globalShortcut, ipcMain, screen, desktopCapturer, n
 import path from 'node:path';
 import fs from 'node:fs';
 import { config } from './config';
-import { generate, type ToolProgress } from './llm';
-import type { Option, LaunchArgs } from './shared-types';
+import { generate } from './llm';
+import type { Option, LaunchArgs, ToolProgress } from './shared-types';
 
 // Caller passes the payload after '--args'. Chromium/Electron may inject its
 // own flags between '--args' and our payload, so skip flag-shaped tokens and

@@ -5,7 +5,7 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { z } from 'zod';
 import { config } from './config';
-import { Context, LLMResponse, type LaunchArgs, type Option } from './shared-types';
+import { Context, LLMResponse, type LaunchArgs, type Option, type ToolProgress, type ToolSummary } from './shared-types';
 import { prompts } from './prompts';
 
 async function openMcp(spec: { command: string; args: string[] }): Promise<Client> {
@@ -135,21 +135,6 @@ const ReadFileArgs = z.object({
   endLine: z.number().optional(),
 }).passthrough();
 const LibraryArgs = z.object({ libraryName: z.string().optional(), libraryId: z.string().optional(), topic: z.string().optional() }).passthrough();
-
-export type ToolSummary =
-  | { type: 'search'; query: string; preview?: string[]; lineCount?: number }
-  | { type: 'read_file'; path: string; startLine?: number; endLine?: number }
-  | { type: 'library'; libraryName?: string; libraryId?: string; topic?: string; preview?: string[] }
-  | { type: 'raw'; args?: Record<string, unknown>; preview?: string[] };
-
-export type ToolProgress = {
-  id: string;
-  name: string;
-  status: 'running' | 'done' | 'error';
-  args?: Record<string, unknown>;
-  summary?: ToolSummary;
-  error?: string;
-};
 
 function preview(result?: string): string[] | undefined {
   const lines = result?.split('\n').map(line => line.trim()).filter(Boolean).slice(0, 4);
