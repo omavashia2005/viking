@@ -49,13 +49,15 @@ export async function generate(userPrompt: string | undefined, screenshot: strin
   let schemaRetries = 0;
   let lastSchemaErr = '';
   let rounds = 0;
+  let toolCalls = 0;
+  let toolCapNoticeSent = false;
   try {
     for (;;) {
       rounds++;
       const res = await client.chat.completions.create({
         model: config.llm.model,
         messages,
-        tools: TOOLS,
+        ...(toolCalls < config.maxToolCalls ? { tools: TOOLS, tool_choice: toolCalls === 0 ? 'required' : 'auto' } : {}),
         response_format: zodResponseFormat(LLMResponse, 'options'),
       });
       const msg = res.choices[0].message;
@@ -78,6 +80,13 @@ export async function generate(userPrompt: string | undefined, screenshot: strin
         continue;
       }
       for (const call of msg.tool_calls) {
+        if (toolCalls >= config.maxToolCalls) {
+          const capMsg = `Tool call skipped: reached the ${config.maxToolCalls}-tool-call cap. Return final JSON using the context already gathered.`;
+          console.log(`[viking:llm] tool r${rounds} ↷ ${call.function.name} [cap]`);
+          messages.push({ role: 'tool', tool_call_id: call.id, content: capMsg });
+          continue;
+        }
+        toolCalls++;
         let args: Record<string, any>;
         try {
           args = JSON.parse(call.function.arguments || '{}');
@@ -95,6 +104,10 @@ export async function generate(userPrompt: string | undefined, screenshot: strin
         const failed = result.startsWith('error:');
         onTool?.({ id: call.id, name: call.function.name, status: failed ? 'error' : 'done', summary: failed ? undefined : toolSummary(call.function.name, args, result), error: failed ? result : undefined });
         messages.push({ role: 'tool', tool_call_id: call.id, content: result });
+      }
+      if (toolCalls >= config.maxToolCalls && !toolCapNoticeSent) {
+        messages.push({ role: 'user', content: `You have used the ${config.maxToolCalls} allowed tool calls. Do not call more tools. Return final JSON now using all gathered context.` });
+        toolCapNoticeSent = true;
       }
     }
   } finally {

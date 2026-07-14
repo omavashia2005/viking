@@ -204,6 +204,12 @@ export default function App(): JSX.Element {
         </div>
       )}
 
+      {phase === 'results' && toolCalls.length > 0 && (
+        <div className="toollog compact">
+          <ToolCallLog calls={toolCalls} />
+        </div>
+      )}
+
       {phase === 'results' && current && (
         <CodeView
           option={current}
