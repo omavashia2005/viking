@@ -3,22 +3,58 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { config } from '../config';
-import { ToolTypes, type Tools, type RegisteredTool , ToolContext, LibraryArgs, ReadFileArgs, QueryArgs,  ToolSummary} from './shared-types';
+import {
+  LibraryArgs,
+  QueryArgs,
+  ReadFileArgs,
+  type LibraryArgs as LibraryArguments,
+  type QueryArgs as QueryArguments,
+  type ReadFileArgs as ReadFileArguments,
+  type ToolSummary,
+} from './shared-types';
 
-const registeredTools = new Map<string, RegisteredTool<ToolContext>>();
+type ToolArguments = Record<string, unknown>;
+type McpServerSpec = { command: string; args: string[] };
+type McpToolContent = { type: string; text?: string };
+type ToolContext = { fff: Client; cwd: string };
+type ToolParameters = {
+  type: string;
+  properties?: Record<string, ToolParameters>;
+  required?: string[];
+  description?: string;
+  [key: string]: unknown;
+};
+enum ToolTypes {
+  Function = 'function',
+}
+type Tools = {
+  type: ToolTypes.Function;
+  function: {
+    name: string;
+    description: string;
+    parameters: ToolParameters;
+  };
+};
+type RegisteredTool = {
+  type: ToolTypes.Function;
+  name: string;
+  description: string;
+  parameters: ToolParameters;
+  run(args: ToolArguments, context: ToolContext): string | Promise<string>;
+};
 
-async function callTool(client: Client, tool: string, args: Record<string, unknown>): Promise<string> {
+const registeredTools = new Map<string, RegisteredTool>();
+
+async function callTool(client: Client, tool: string, args: ToolArguments): Promise<string> {
   const res = await client.callTool({ name: tool, arguments: args });
-  const content = (res.content as Array<{ type: string; text?: string }>) ?? [];
+  const content = (res.content as McpToolContent[]) ?? [];
   return content.filter(c => c.type === 'text').map(c => c.text ?? '').join('\n');
 }
 
-
-async function mcpCall(spec: { command: string; args: string[] }, tool: string, args: Record<string, unknown>): Promise<string> {
+async function mcpCall(spec: McpServerSpec, tool: string, args: ToolArguments): Promise<string> {
   const client = await openMcp(spec);
   try { return await callTool(client, tool, args); } finally { await client.close(); }
 }
-
 
 function findRepoRoot(cwd: string): string | undefined {
   let dir = path.resolve(cwd || process.cwd());
@@ -32,7 +68,8 @@ function findRepoRoot(cwd: string): string | undefined {
 
 export function resolveReadPath(cwd: string, filePath: string): string {
   if (path.isAbsolute(filePath)) return filePath;
-  const bases = [findRepoRoot(cwd), cwd].filter((base): base is string => !!base);
+  const repoRoot = findRepoRoot(cwd);
+  const bases = repoRoot ? [repoRoot, cwd] : [cwd];
   for (const base of bases) {
     const abs = path.resolve(base, filePath);
     if (fs.existsSync(abs)) return abs;
@@ -40,7 +77,7 @@ export function resolveReadPath(cwd: string, filePath: string): string {
   return path.resolve(cwd, filePath);
 }
 
-function readFileTool(cwd: string, args: { path: string; startLine?: number; endLine?: number }): string {
+function readFileTool(cwd: string, args: ReadFileArguments): string {
   const abs = resolveReadPath(cwd, args.path);
   const lines = fs.readFileSync(abs, 'utf8').split('\n');
   const start = Math.max(1, args.startLine ?? 1);
@@ -48,13 +85,12 @@ function readFileTool(cwd: string, args: { path: string; startLine?: number; end
   return lines.slice(start - 1, end).map((l, i) => `${start + i}: ${l}`).join('\n');
 }
 
-
 function preview(result?: string): string[] | undefined {
   const lines = result?.split('\n').map(line => line.trim()).filter(Boolean).slice(0, 4);
   return lines?.length ? lines : undefined;
 }
 
-export function toolSummary(name: string, args: Record<string, unknown>, result?: string): ToolSummary {
+export function toolSummary(name: string, args: ToolArguments, result?: string): ToolSummary {
   if (name === 'grep_codebase' || name === 'find_files') {
     const parsed = QueryArgs.safeParse(args);
     return parsed.success
@@ -72,13 +108,13 @@ export function toolSummary(name: string, args: Record<string, unknown>, result?
   return { type: 'raw', args, preview: preview(result) };
 }
 
-export async function openMcp(spec: { command: string; args: string[] }): Promise<Client> {
-	const client = new Client({ name: 'viking', version: '0.1.0' });
-	await client.connect(new StdioClientTransport({ command: spec.command, args: spec.args }));
-	return client;
+export async function openMcp(spec: McpServerSpec): Promise<Client> {
+  const client = new Client({ name: 'viking', version: '0.1.0' });
+  await client.connect(new StdioClientTransport({ command: spec.command, args: spec.args }));
+  return client;
 }
 
-export function registerTool(tool: RegisteredTool<ToolContext>): RegisteredTool<ToolContext> {
+export function registerTool(tool: RegisteredTool): RegisteredTool {
   registeredTools.set(tool.name, tool);
   return tool;
 }
@@ -90,6 +126,33 @@ export function buildTools(): Tools[] {
   }));
 }
 
+function runGrepCodebase(args: ToolArguments, context: ToolContext): Promise<string> {
+  const { query }: QueryArguments = QueryArgs.parse(args);
+  return callTool(context.fff, 'grep', { query });
+}
+
+function runFindFiles(args: ToolArguments, context: ToolContext): Promise<string> {
+  const { query }: QueryArguments = QueryArgs.parse(args);
+  return callTool(context.fff, 'find_files', { query });
+}
+
+function runReadFile(args: ToolArguments, context: ToolContext): string {
+  const fileArgs: ReadFileArguments = ReadFileArgs.parse(args);
+  return readFileTool(context.cwd, fileArgs);
+}
+
+function runResolveLibraryId(args: ToolArguments): Promise<string> {
+  const { libraryName }: LibraryArguments = LibraryArgs.parse(args);
+  return mcpCall(config.mcp.context7, 'resolve-library-id', { libraryName });
+}
+
+function runGetLibraryDocs(args: ToolArguments): Promise<string> {
+  const { libraryId, topic }: LibraryArguments = LibraryArgs.parse(args);
+  return mcpCall(config.mcp.context7, 'get-library-docs', {
+    context7CompatibleLibraryID: libraryId, topic, tokens: 2000,
+  });
+}
+
 registerTool({
   type: ToolTypes.Function,
   name: 'grep_codebase',
@@ -99,7 +162,7 @@ registerTool({
     properties: { query: { type: 'string' } },
     required: ['query'],
   },
-  run: (args, { fff }) => callTool(fff, 'grep', { query: args.query }),
+  run: runGrepCodebase,
 });
 
 registerTool({
@@ -111,7 +174,7 @@ registerTool({
     properties: { query: { type: 'string' } },
     required: ['query'],
   },
-  run: (args, { fff }) => callTool(fff, 'find_files', { query: args.query }),
+  run: runFindFiles,
 });
 
 registerTool({
@@ -127,7 +190,7 @@ registerTool({
     },
     required: ['path'],
   },
-  run: (args, { cwd }) => readFileTool(cwd, args as any),
+  run: runReadFile,
 });
 
 registerTool({
@@ -139,7 +202,7 @@ registerTool({
     properties: { libraryName: { type: 'string' } },
     required: ['libraryName'],
   },
-  run: args => mcpCall(config.mcp.context7, 'resolve-library-id', { libraryName: args.libraryName }),
+  run: runResolveLibraryId,
 });
 
 registerTool({
@@ -154,12 +217,10 @@ registerTool({
     },
     required: ['libraryId', 'topic'],
   },
-  run: args => mcpCall(config.mcp.context7, 'get-library-docs', {
-    context7CompatibleLibraryID: args.libraryId, topic: args.topic, tokens: 2000,
-  }),
+  run: runGetLibraryDocs,
 });
 
-export async function runTool(name: string, args: Record<string, any>, fff: Client, cwd: string): Promise<string> {
+export async function runTool(name: string, args: ToolArguments, fff: Client, cwd: string): Promise<string> {
   try {
     const tool = registeredTools.get(name);
     return tool ? await tool.run(args, { fff, cwd }) : `unknown tool: ${name}`;
