@@ -20,7 +20,7 @@ export VIKING_CWD=/path/to/your/project         # codebase fff greps against
 ```
 
 `fff-mcp` is expected at `~/.local/bin/fff-mcp`. Change the path in
-`src/electron/main/agent/config.ts` if yours lives elsewhere. Context7 runs via `npx`, no install.
+`electron/main/agent/config.ts` if yours lives elsewhere. Context7 runs via `npx`, no install.
 
 ## Run
 
@@ -39,13 +39,13 @@ npm start
 | `⌘ C`     | copy the active option (defers to native copy if you have text selected)                   |
 | `q`       | hide the overlay (ignored while typing in an input — use `esc` then)                       |
 
-Settings (provider + keymaps) are saved to `<userData>/viking-settings.json` and override the defaults from `src/electron/main/agent/config.ts`.
+Settings (provider + keymaps) are saved to `<userData>/viking-settings.json` and override the defaults from `electron/main/agent/config.ts`.
 
-Edit hotkeys in `src/electron/main/agent/config.ts`.
+Edit hotkeys in `electron/main/agent/config.ts`.
 
 ## Where to tweak
 
-- `src/electron/main/agent/config.ts` — hotkeys, model, base URL, MCP paths, default language
-- `src/electron/main/agent/prompts.ts` — system + user prompt
-- `src/electron/main/agent/shared-types.ts` — zod schemas (Context, Option, LLMResponse)
-- `src/electron/main/agent/llm.ts` — how context is gathered and the LLM is called
+- `electron/main/agent/config.ts` — hotkeys, model, base URL, MCP paths, default language
+- `electron/main/agent/prompts.ts` — system + user prompt
+- `electron/main/agent/shared-types.ts` — zod schemas (Context, Option, LLMResponse)
+- `electron/main/agent/llm.ts` — how context is gathered and the LLM is called

@@ -5,7 +5,7 @@
   "tsx": true,
   "tailwind": {
     "config": "",
-    "css": "src/electron/renderer/styles.css",
+    "css": "electron/renderer/styles.css",
     "baseColor": "zinc",
     "cssVariables": true
   },

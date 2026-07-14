@@ -11,8 +11,8 @@
     "moduleResolution": "node",
     "allowSyntheticDefaultImports": true,
     "baseUrl": ".",
-    "paths": { "@/*": ["src/*"] },
+    "paths": { "@/*": ["*"] },
     "outDir": "./dist"
   },
-  "include": ["src"]
+  "include": ["shared-types.ts", "electron", "setup", "lib"]
 }
