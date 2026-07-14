@@ -10,8 +10,6 @@ import type { ToolProgress } from './tools/shared-types';
 // ponytail: cap schema-parse retries at 3; raise if models regularly need more nudges to produce valid JSON.
 const MAX_SCHEMA_RETRIES = 3;
 
-const client = new OpenAI({ baseURL: config.llm.baseURL, apiKey: config.llm.apiKey });
-
 export const TOOLS: OpenAI.Chat.ChatCompletionTool[] = buildTools();
 
 function seedContext(launch: LaunchArgs | undefined): { cwd: string; activeFileSnippet: string } {
@@ -25,6 +23,7 @@ function seedContext(launch: LaunchArgs | undefined): { cwd: string; activeFileS
 
 export async function generate(userPrompt: string | undefined, screenshot: string | undefined, launch?: LaunchArgs, onTool?: (event: ToolProgress) => void): Promise<{ options: Option[]; softError?: string }> {
   const { cwd, activeFileSnippet } = seedContext(launch);
+  const client = new OpenAI({ baseURL: config.llm.baseURL, apiKey: config.llm.apiKey });
 
   const ctx: Context = {
     userPrompt,

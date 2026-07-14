@@ -78,6 +78,8 @@ export default function App(): JSX.Element {
     });
     window.viking.on('viking:reset', () => setPhase('hidden'));
     window.viking.getSettings().then(s => {
+      setLlm(s.llm);
+      setHotkeys(s.hotkeys);
       if (THEMES.includes(s.theme)) setTheme(s.theme);
       if (typeof s.opacity === 'number') setOpacity(s.opacity);
     });
