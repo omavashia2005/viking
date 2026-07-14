@@ -2,7 +2,7 @@ import React from 'react';
 import { CheckIcon, TriangleAlertIcon } from 'lucide-react';
 import { Marker, MarkerContent, MarkerIcon } from '@/components/ui/marker';
 import { Spinner } from '@/components/ui/spinner';
-import type { ToolProgress, ToolSummary } from '../shared-types';
+import type { ToolProgress, ToolSummary } from '../agent/tools/shared-types';
 
 export type ToolCallEntry = ToolProgress;
 

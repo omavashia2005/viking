@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import hljs from 'highlight.js/lib/common';
-import type { Option, ToolProgress } from './shared-types';
+import type { ToolProgress } from './agent/tools/shared-types';
+import type { Option } from './shared-types';
 import { CodeView } from '@/components/CodeView';
 import { ErrorView } from '@/components/ErrorView';
 import { SettingsPanel } from '@/components/SettingsPanel';
