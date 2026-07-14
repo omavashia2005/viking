@@ -2,8 +2,8 @@ import { app, BrowserWindow, globalShortcut, ipcMain, screen, desktopCapturer, n
 import path from 'node:path';
 import fs from 'node:fs';
 import { config } from './agent/config';
-import { generate } from './agent/llm';
-import type { LaunchArgs, Option } from './agent/shared-types';
+import { generate, type LaunchArgs } from './agent/llm';
+import type { Option } from './agent/shared-types';
 import type { ToolProgress } from './agent/tools/shared-types';
 
 // Caller passes the payload after '--args'. Chromium/Electron may inject its

@@ -2,17 +2,22 @@ import fs from 'node:fs';
 import OpenAI from 'openai';
 import { zodResponseFormat } from 'openai/helpers/zod';
 import { config } from './config';
-import { Context, LLMResponse, type LaunchArgs, type Option } from './shared-types';
-import { prompts } from './prompts';
+import { LLMResponse, type Option } from './shared-types';
+import { prompts, type Context } from './prompts';
 import { buildTools, openMcp, runTool, toolSummary } from './tools/tools';
 import type { ToolProgress } from './tools/shared-types';
 
 // ponytail: cap schema-parse retries at 3; raise if models regularly need more nudges to produce valid JSON.
 const MAX_SCHEMA_RETRIES = 3;
 
+export type LaunchArgs = { cwd?: string; activeFile?: string };
+type SeedContextResult = { cwd: string; activeFileSnippet: string };
+type GenerateToolProgressCallback = (event: ToolProgress) => void;
+type GenerateResult = { options: Option[]; softError?: string };
+
 export const TOOLS: OpenAI.Chat.ChatCompletionTool[] = buildTools();
 
-function seedContext(launch: LaunchArgs | undefined): { cwd: string; activeFileSnippet: string } {
+function seedContext(launch: LaunchArgs | undefined): SeedContextResult {
   const cwd = launch?.cwd || config.cwd;
   let snippet = '';
   if (launch?.activeFile) {
@@ -21,7 +26,12 @@ function seedContext(launch: LaunchArgs | undefined): { cwd: string; activeFileS
   return { cwd, activeFileSnippet: snippet };
 }
 
-export async function generate(userPrompt: string | undefined, screenshot: string | undefined, launch?: LaunchArgs, onTool?: (event: ToolProgress) => void): Promise<{ options: Option[]; softError?: string }> {
+export async function generate(
+  userPrompt: string | undefined,
+  screenshot: string | undefined,
+  launch?: LaunchArgs,
+  onTool?: GenerateToolProgressCallback,
+): Promise<GenerateResult> {
   const { cwd, activeFileSnippet } = seedContext(launch);
   const client = new OpenAI({ baseURL: config.llm.baseURL, apiKey: config.llm.apiKey });
 
