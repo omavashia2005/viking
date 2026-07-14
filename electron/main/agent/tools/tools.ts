@@ -1,5 +1,6 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import fs from 'node:fs';
+import path from 'node:path';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { config } from '../config';
 import { ToolTypes, type Tools, type RegisteredTool , ToolContext, LibraryArgs, ReadFileArgs, QueryArgs,  ToolSummary} from './shared-types';
@@ -19,8 +20,28 @@ async function mcpCall(spec: { command: string; args: string[] }, tool: string, 
 }
 
 
+function findRepoRoot(cwd: string): string | undefined {
+  let dir = path.resolve(cwd || process.cwd());
+  for (;;) {
+    if (fs.existsSync(path.join(dir, '.git'))) return dir;
+    const parent = path.dirname(dir);
+    if (parent === dir) return undefined;
+    dir = parent;
+  }
+}
+
+export function resolveReadPath(cwd: string, filePath: string): string {
+  if (path.isAbsolute(filePath)) return filePath;
+  const bases = [findRepoRoot(cwd), cwd].filter((base): base is string => !!base);
+  for (const base of bases) {
+    const abs = path.resolve(base, filePath);
+    if (fs.existsSync(abs)) return abs;
+  }
+  return path.resolve(cwd, filePath);
+}
+
 function readFileTool(cwd: string, args: { path: string; startLine?: number; endLine?: number }): string {
-  const abs = args.path.startsWith('/') ? args.path : `${cwd.replace(/\/$/, '')}/${args.path}`;
+  const abs = resolveReadPath(cwd, args.path);
   const lines = fs.readFileSync(abs, 'utf8').split('\n');
   const start = Math.max(1, args.startLine ?? 1);
   const end = Math.min(lines.length, args.endLine ?? start + 399);
