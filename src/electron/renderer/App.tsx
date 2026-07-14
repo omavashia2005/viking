@@ -1,16 +1,15 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import hljs from 'highlight.js/lib/common';
-import type { ToolProgress } from './agent/tools/shared-types';
-import type { Option } from './shared-types';
-import { CodeView } from '@/components/CodeView';
-import { ErrorView } from '@/components/ErrorView';
-import { SettingsPanel } from '@/components/SettingsPanel';
-import { SoftAlert } from '@/components/SoftAlert';
-import { Spotlight } from '@/components/Spotlight';
-import { TitleBar } from '@/components/TitleBar';
-import { ToolCallLog, type ToolCallEntry } from '@/components/ToolCallLog';
-import { ThemePicker } from '@/components/ThemePicker';
-import { THEMES, type Hotkeys, type LLM, type Phase, type Theme } from '@/components/types';
+import type { Option, ToolProgress } from '@/shared-types';
+import { CodeView } from './components/CodeView';
+import { ErrorView } from './components/ErrorView';
+import { SettingsPanel } from './components/SettingsPanel';
+import { SoftAlert } from './components/SoftAlert';
+import { Spotlight } from './components/Spotlight';
+import { TitleBar } from './components/TitleBar';
+import { ToolCallLog, type ToolCallEntry } from './components/ToolCallLog';
+import { ThemePicker } from './components/ThemePicker';
+import { THEMES, type Hotkeys, type LLM, type Phase, type Theme } from './components/types';
 
 function mergeToolCall(prev: ToolCallEntry[], event: ToolProgress): ToolCallEntry[] {
   const i = prev.findIndex(t => t.id === event.id);

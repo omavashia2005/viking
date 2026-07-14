@@ -1,5 +1,5 @@
 import React from 'react';
-import type { Option } from '../shared-types';
+import type { Option } from '@/shared-types';
 
 export function CodeView({ option, lines, copied, onCopy }: {
   option: Option;

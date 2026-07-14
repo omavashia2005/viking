@@ -1,6 +1,6 @@
 import React from 'react';
-import { Button } from '@/components/ui/button';
-import { THEMES, type Theme } from '@/components/types';
+import { THEMES, type Theme } from './types';
+import { Button } from './ui/button';
 
 export function ThemePicker({ theme, onChange, opacity, onOpacity }: {
   theme: Theme;

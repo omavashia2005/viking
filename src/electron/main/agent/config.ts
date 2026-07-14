@@ -15,7 +15,7 @@ export const config = {
     apiKey: process.env.LLM_API_KEY ?? process.env.OPENAI_API_KEY ?? '',
     model: process.env.LLM_MODEL ?? 'gpt-4o',
   },
-  theme: 'onyx', // overlay theme; see src/themes.css for the available blocks
+  theme: 'onyx', // overlay theme; see src/electron/renderer/themes.css for the available blocks
   opacity: 0.62, // overlay glass opacity, 0..1
   numOptions: 4,
   // Default doc lookup; user retunes by editing.

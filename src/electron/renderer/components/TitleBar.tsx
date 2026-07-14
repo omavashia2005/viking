@@ -1,6 +1,6 @@
 import React from 'react';
-import { Button } from '@/components/ui/button';
-import type { Option } from '../shared-types';
+import type { Option } from '@/shared-types';
+import { Button } from './ui/button';
 import type { Phase } from './types';
 
 export function TitleBar({ phase, options, active, onSelect }: {

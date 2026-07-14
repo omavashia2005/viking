@@ -1,5 +1,5 @@
 import React from 'react';
-import type { Option } from '../shared-types';
+import type { Option } from '@/shared-types';
 
 type Props = {
   prompt: string;
