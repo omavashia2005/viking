@@ -1,11 +1,11 @@
 import { app, BrowserWindow, globalShortcut, ipcMain, screen, desktopCapturer, nativeImage } from 'electron';
 import path from 'node:path';
 import fs from 'node:fs';
-import { config } from './agent/config';
-import { generate } from './agent/llm';
-import type { LaunchArgs } from './agent/shared-types';
-import type { ToolProgress } from './agent/tools/shared-types';
-import type { Option } from './shared-types';
+import { config } from '../agent/config';
+import { generate } from '../agent/llm';
+import type { LaunchArgs } from '../agent/shared-types';
+import type { ToolProgress } from '../agent/tools/shared-types';
+import type { Option } from '../shared-types';
 
 // Caller passes the payload after '--args'. Chromium/Electron may inject its
 // own flags between '--args' and our payload, so skip flag-shaped tokens and

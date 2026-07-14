@@ -4,8 +4,8 @@
   "main": "dist/main.js",
   "scripts": {
     "start": "npm run build && concurrently \"npm run watch\" \"electron .\"",
-    "watch": "concurrently \"esbuild src/main.ts --bundle --platform=node --external:electron --outfile=dist/main.js --format=cjs --watch\" \"esbuild src/preload.ts --bundle --platform=node --external:electron --outfile=dist/preload.js --format=cjs --watch\" \"esbuild src/index.tsx --bundle --outfile=dist/renderer.js --watch --loader:.js=jsx --define:process.env.NODE_ENV='\\\"development\\\"'\" \"tailwindcss -i src/styles.css -o dist/tailwind.css --watch\"",
-    "build": "esbuild src/main.ts --bundle --platform=node --external:electron --outfile=dist/main.js --format=cjs && esbuild src/preload.ts --bundle --platform=node --external:electron --outfile=dist/preload.js --format=cjs && esbuild src/index.tsx --bundle --outfile=dist/renderer.js --loader:.js=jsx --define:process.env.NODE_ENV='\"development\"' && tailwindcss -i src/styles.css -o dist/tailwind.css",
+    "watch": "concurrently \"esbuild src/electron/main.ts --bundle --platform=node --external:electron --outfile=dist/main.js --format=cjs --watch\" \"esbuild src/electron/preload.ts --bundle --platform=node --external:electron --outfile=dist/preload.js --format=cjs --watch\" \"esbuild src/electron/renderer.tsx --bundle --outfile=dist/renderer.js --watch --loader:.js=jsx --define:process.env.NODE_ENV='\\\"development\\\"'\" \"tailwindcss -i src/styles.css -o dist/tailwind.css --watch\"",
+    "build": "esbuild src/electron/main.ts --bundle --platform=node --external:electron --outfile=dist/main.js --format=cjs && esbuild src/electron/preload.ts --bundle --platform=node --external:electron --outfile=dist/preload.js --format=cjs && esbuild src/electron/renderer.tsx --bundle --outfile=dist/renderer.js --loader:.js=jsx --define:process.env.NODE_ENV='\"development\"' && tailwindcss -i src/styles.css -o dist/tailwind.css",
     "dist": "npm run build && electron-builder --mac --dir",
     "setup:build": "esbuild src/setup/install.ts --bundle --platform=node --loader:.lua=text --outfile=dist/setup.js --format=cjs",
     "setup": "npm run setup:build && node dist/setup.js"
