@@ -29,11 +29,12 @@
   --radius: 0.5rem;
 }
 
-/* glass — Apple-style light glass (default): bright frost, dark ink, system-blue accent.
-   --glass-alpha tunes the white frost itself, so the slider controls how see-through
-   the glass is, never the window. */
+/* glass — Apple Liquid Glass (default): heavy frost, specular rims, dark ink,
+   system-blue accent. --glass-alpha tunes the white frost itself, so the slider
+   controls how see-through the glass is, never the window. The surface treatment
+   (sheen + rims) lives in styles.css under [data-theme="glass"]. */
 [data-theme="glass"] {
-  --glass-blur: 30px;
+  --glass-blur: 40px;
   --foreground: #1d1d1f;
   --card: rgba(255, 255, 255, var(--glass-alpha));
   --card-foreground: #1d1d1f;
