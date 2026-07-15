@@ -50,6 +50,8 @@ export default function App(): JSX.Element {
   const [theme, setTheme] = useState<Theme>('glass');
   const [opacity, setOpacity] = useState(0.62);
   const [saved, setSaved] = useState(false);
+  const [closing, setClosing] = useState(false);
+  const hideTimer = useRef<number>();
   const settingsReady = useRef(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const logRef = useRef<HTMLDivElement>(null);
@@ -62,6 +64,7 @@ export default function App(): JSX.Element {
     }
     window.viking.on('viking:show', ({ mode, refineFrom }: { mode: 'textbox' | 'followup'; refineFrom?: Option }) => {
       console.log('[viking] show', mode);
+      clearTimeout(hideTimer.current); setClosing(false); // reopened mid-close: cancel the pending hide
       setError(''); setSoftError(''); setPrompt(''); setToolCalls([]); setReasoning([]);
       setPhase('textbox');
       setRefineFrom(mode === 'followup' ? refineFrom : undefined);
@@ -79,7 +82,7 @@ export default function App(): JSX.Element {
       }
       setOptions(p.options); setActive(0); setPhase('results');
     });
-    window.viking.on('viking:reset', () => setPhase('hidden'));
+    window.viking.on('viking:reset', () => { setPhase('hidden'); setClosing(false); });
     window.viking.getSettings().then(s => {
       setLlm(s.llm);
       setHotkeys(s.hotkeys);
@@ -123,8 +126,8 @@ export default function App(): JSX.Element {
       const editable = !!t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || (t as any).isContentEditable);
       const mod = e.metaKey || e.ctrlKey;
       // q closes when no input is focused; Esc kept as the escape-hatch while typing.
-      if (!editable && (e.key === 'q' || e.key === 'Q')) { e.preventDefault(); return window.viking.hide(); }
-      if (editable && e.key === 'Escape') return window.viking.hide();
+      if (!editable && (e.key === 'q' || e.key === 'Q')) { e.preventDefault(); return close(); }
+      if (editable && e.key === 'Escape') return close();
       const pane = ({ s: 'provider', k: 'keymaps', t: 'theme' } as const)[e.key.toLowerCase()];
       if (mod && pane) {
         e.preventDefault();
@@ -155,6 +158,12 @@ export default function App(): JSX.Element {
     return () => window.removeEventListener('keydown', onKey);
   }, [options, active]);
 
+  // Spotlight-style dismiss: let overlay-out (140ms) finish before the window hides.
+  function close(): void {
+    setClosing(true);
+    hideTimer.current = window.setTimeout(() => window.viking.hide(), 150);
+  }
+
   if (phase === 'hidden') return <div style={{ display: 'none' }} />;
 
   const alertEl = <SoftAlert message={softError} onDismiss={() => setSoftError('')} />;
@@ -168,6 +177,7 @@ export default function App(): JSX.Element {
         inputRef={inputRef}
         onChange={setPrompt}
         onSubmit={() => { if (prompt.trim()) window.viking.submit({ prompt: prompt.trim(), refineFrom }); }}
+        className={closing ? 'closing' : undefined}
       >
         {alertEl}
       </Spotlight>
@@ -175,7 +185,7 @@ export default function App(): JSX.Element {
   }
 
   return (
-    <Tabs value={String(active)} onValueChange={value => setActive(Number(value))} className="overlay gap-0">
+    <Tabs value={String(active)} onValueChange={value => setActive(Number(value))} className={closing ? 'overlay gap-0 closing' : 'overlay gap-0'}>
       <TitleBar phase={phase} options={options} />
 
       {phase === 'loading' && (

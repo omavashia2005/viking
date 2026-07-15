@@ -7,17 +7,18 @@ type Props = {
   inputRef: React.RefObject<HTMLTextAreaElement>;
   onChange: (v: string) => void;
   onSubmit: () => void;
+  className?: string;
   children?: React.ReactNode; // alert slot
 };
 
-export function Spotlight({ prompt, refineFrom, inputRef, onChange, onSubmit, children }: Props): JSX.Element {
+export function Spotlight({ prompt, refineFrom, inputRef, onChange, onSubmit, className, children }: Props): JSX.Element {
   const growTextarea = (el: HTMLTextAreaElement) => {
     el.style.height = 'auto';
     el.style.height = `${el.scrollHeight}px`;
     window.viking.resize(el.scrollHeight + 48);
   };
   return (
-    <div className="spot">
+    <div className={className ? `spot ${className}` : 'spot'}>
       <form className="prompt" onSubmit={e => { e.preventDefault(); onSubmit(); }}>
         <span className="caret">›</span>
         <textarea
