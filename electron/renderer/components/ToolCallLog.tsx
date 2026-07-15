@@ -17,9 +17,59 @@ import {
   TaskItem,
   TaskTrigger,
 } from "@/src/components/ai-elements/task";
+import { Shimmer } from "@/src/components/ai-elements/shimmer";
 import { Spinner } from "./ui/spinner";
 
 export type ToolCallEntry = ToolProgress;
+
+const TOOL_PROGRESS_VERBS = [
+  "Searching",
+  "Reading",
+  "Inspecting",
+  "Tracing",
+  "Checking",
+  "Comparing",
+  "Resolving",
+  "Analyzing",
+  "Validating",
+  "Planning",
+  "Drafting",
+  "Building",
+  "Testing",
+  "Reviewing",
+  "Refining",
+  "Formatting",
+  "Summarizing",
+  "Organizing",
+  "Connecting",
+  "Finishing",
+] as const;
+
+function ToolActivity(): JSX.Element {
+  const [verb, setVerb] = React.useState(0);
+
+  React.useEffect(() => {
+    const timer = window.setInterval(
+      () => setVerb((index) => (index + 1) % TOOL_PROGRESS_VERBS.length),
+      1600,
+    );
+    return () => window.clearInterval(timer);
+  }, []);
+
+  return (
+    <TaskItem
+      aria-label="Work in progress"
+      className="mt-2 pl-6 text-xs"
+      role="status"
+    >
+      <span aria-hidden="true">
+        <Shimmer as="span" duration={1.6}>
+          {`${TOOL_PROGRESS_VERBS[verb]}…`}
+        </Shimmer>
+      </span>
+    </TaskItem>
+  );
+}
 
 function clip(s: string): string {
   return s.length > 180 ? `${s.slice(0, 180)}...` : s;
@@ -113,6 +163,7 @@ export function ToolCallLog({
             <Spinner className="text-primary" />
             Gathering context and querying the model
           </TaskItem>
+          <ToolActivity />
         </TaskContent>
       </Task>
     );
@@ -155,7 +206,7 @@ export function ToolCallLog({
     </Task>
   );
 
-  if (reasoning.length === 0) return <>{toolTask}</>;
+  if (reasoning.length === 0) return <>{toolTask}<ToolActivity /></>;
 
   return (
     <ChainOfThought defaultOpen>
@@ -171,6 +222,7 @@ export function ToolCallLog({
           />
         ))}
         {toolTask}
+        <ToolActivity />
       </ChainOfThoughtContent>
     </ChainOfThought>
   );

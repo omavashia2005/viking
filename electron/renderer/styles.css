@@ -111,7 +111,7 @@
   contain: paint; transform: translateZ(0); will-change: scroll-position;
   overscroll-behavior: contain; scrollbar-gutter: stable; }
 .settings label { display: flex; flex-direction: column; gap: 5px; }
-.settings label span { color: var(--muted-foreground); font-size: 10.5px;
+.settings label > span { color: var(--muted-foreground); font-size: 10.5px;
   text-transform: lowercase; letter-spacing: 0.16em; }
 .settings input[type="range"] { width: 100%; accent-color: var(--primary); }
 .srow { display: flex; align-items: center; gap: 14px; margin-top: 6px; }

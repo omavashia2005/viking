@@ -1,6 +1,6 @@
 import React from 'react';
 import { THEMES, type Theme } from './types';
-import { Button } from './ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 
 export function ThemePicker({ theme, onChange, opacity, onOpacity }: {
   theme: Theme;
@@ -10,22 +10,19 @@ export function ThemePicker({ theme, onChange, opacity, onOpacity }: {
 }): JSX.Element {
   return (
     <>
-      <label>
-        <span>theme</span>
-        <div className="flex gap-1.5 pt-0.5">
-          {THEMES.map(t => (
-            <Button
-              key={t}
-              size="sm"
-              variant={t === theme ? 'default' : 'outline'}
-              className="h-6 rounded-full px-2.5 font-normal lowercase text-[10.5px]"
-              onClick={() => onChange(t)}
-            >
-              {t}
-            </Button>
-          ))}
-        </div>
-      </label>
+      <div className="flex flex-col gap-1.5">
+        <span className="text-[10.5px] lowercase tracking-[0.16em] text-muted-foreground">theme</span>
+        <Select value={theme} onValueChange={value => onChange(value as Theme)}>
+          <SelectTrigger aria-label="theme" className="w-full lowercase">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {THEMES.map(t => (
+              <SelectItem key={t} value={t} className="lowercase">{t}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
       <label>
         <span>opacity · {Math.round(opacity * 100)}%</span>
         <input

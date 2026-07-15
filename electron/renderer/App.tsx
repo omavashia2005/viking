@@ -20,6 +20,17 @@ function mergeToolCall(prev: ToolCallEntry[], event: ToolProgress): ToolCallEntr
   return next;
 }
 
+export function matchesShortcut(e: KeyboardEvent, shortcut: string, implicitMod = false): boolean {
+  const parts = shortcut.toLowerCase().split('+');
+  const key = parts.pop();
+  const has = (part: string) => parts.includes(part);
+  const commandOrControl = implicitMod || has('commandorcontrol');
+  const pressedKey = e.key === ' ' ? 'space' : e.key.toLowerCase();
+  if (!key || pressedKey !== key) return false;
+  if (commandOrControl ? !(e.metaKey || e.ctrlKey) : e.metaKey !== has('command') || e.ctrlKey !== has('control')) return false;
+  return e.altKey === has('alt') && e.shiftKey === has('shift');
+}
+
 declare global {
   interface Window {
     viking: {
@@ -122,14 +133,17 @@ export default function App(): JSX.Element {
 
   useEffect(() => {
     const onKey = async (e: KeyboardEvent) => {
+      if (e.defaultPrevented) return;
       const t = e.target as HTMLElement | null;
       const editable = !!t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || (t as any).isContentEditable);
       const mod = e.metaKey || e.ctrlKey;
-      // q closes when no input is focused; Esc kept as the escape-hatch while typing.
-      if (!editable && (e.key === 'q' || e.key === 'Q')) { e.preventDefault(); return close(); }
+      // The configured shortcut closes when no input is focused; Esc stays the escape-hatch while typing.
+      if (!editable && matchesShortcut(e, hotkeys.close)) { e.preventDefault(); return close(); }
       if (editable && e.key === 'Escape') return close();
-      const pane = ({ s: 'provider', k: 'keymaps', t: 'theme' } as const)[e.key.toLowerCase()];
-      if (mod && pane) {
+      const pane = matchesShortcut(e, hotkeys.settings)
+        ? 'keymaps'
+        : mod ? ({ s: 'provider', t: 'theme' } as const)[e.key.toLowerCase()] : undefined;
+      if (pane) {
         e.preventDefault();
         settingsReady.current = false;
         const s = await window.viking.getSettings();
@@ -148,7 +162,7 @@ export default function App(): JSX.Element {
         if (i < options.length) setActive(i);
         return;
       }
-      if (mod && e.key.toLowerCase() === 'c' && options[active]) {
+      if (matchesShortcut(e, hotkeys.copy, true) && options[active]) {
         if (window.getSelection()?.toString()) return; // user is doing a real copy
         e.preventDefault();
         await navigator.clipboard.writeText(options[active].code);
@@ -156,7 +170,7 @@ export default function App(): JSX.Element {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [options, active]);
+  }, [options, active, hotkeys]);
 
   // Spotlight-style dismiss: let overlay-out (140ms) finish before the window hides.
   function close(): void {
@@ -212,7 +226,7 @@ export default function App(): JSX.Element {
       {phase === 'provider' && (
         <SettingsPanel
           saved={saved}
-          hint="q to close · ⌘K keymaps · ⌘T theme"
+          hint={`${hotkeys.close} to close · ${hotkeys.settings} keymaps · ⌘T theme`}
           fields={[
             { label: 'AI Gateway API key', value: llm.apiKey, onChange: v => setLlm({ ...llm, apiKey: v }), placeholder: 'AI_GATEWAY_API_KEY', type: 'password' },
           ]}
@@ -222,7 +236,7 @@ export default function App(): JSX.Element {
       )}
 
       {phase === 'theme' && (
-        <SettingsPanel saved={saved} hint="q to close · ⌘S provider · ⌘K keymaps" fields={[]}>
+        <SettingsPanel saved={saved} hint={`${hotkeys.close} to close · ⌘S provider · ${hotkeys.settings} keymaps`} fields={[]}>
           <ThemePicker theme={theme} onChange={setTheme} opacity={opacity} onOpacity={setOpacity} />
         </SettingsPanel>
       )}
@@ -230,12 +244,12 @@ export default function App(): JSX.Element {
       {phase === 'keymaps' && (
         <SettingsPanel
           saved={saved}
-          hint="q to close · ⌘S provider · ⌘T theme"
+          hint={`${hotkeys.close} to close · ⌘S provider · ⌘T theme`}
           fields={[
-            { label: 'open prompt (global)', value: hotkeys.open, onChange: v => setHotkeys({ ...hotkeys, open: v }), placeholder: 'CommandOrControl+I', autoFocus: true },
-            { label: 'open settings (window)', value: hotkeys.settings, onChange: v => setHotkeys({ ...hotkeys, settings: v }), placeholder: 'CommandOrControl+K' },
-            { label: 'close key (window, ignored while typing)', value: hotkeys.close, onChange: v => setHotkeys({ ...hotkeys, close: v }), placeholder: 'q' },
-            { label: 'copy active (⌘/Ctrl + …)', value: hotkeys.copy, onChange: v => setHotkeys({ ...hotkeys, copy: v }), placeholder: 'c' },
+            { label: 'open prompt (global)', value: hotkeys.open, onChange: v => setHotkeys({ ...hotkeys, open: v }), options: ['CommandOrControl+I', 'CommandOrControl+Shift+I', 'Alt+I'], autoFocus: true },
+            { label: 'open settings (window)', value: hotkeys.settings, onChange: v => setHotkeys({ ...hotkeys, settings: v }), options: ['CommandOrControl+K', 'CommandOrControl+,', 'CommandOrControl+Shift+K'] },
+            { label: 'close key (window, ignored while typing)', value: hotkeys.close, onChange: v => setHotkeys({ ...hotkeys, close: v }), options: ['q', 'Escape'] },
+            { label: 'copy active (⌘/Ctrl + …)', value: hotkeys.copy, onChange: v => setHotkeys({ ...hotkeys, copy: v }), options: ['c', 'y', 'p'] },
           ]}
         />
       )}
