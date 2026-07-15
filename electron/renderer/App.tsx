@@ -10,6 +10,7 @@ import { TitleBar } from './components/TitleBar';
 import { ToolCallLog, type ToolCallEntry } from './components/ToolCallLog';
 import { ThemePicker } from './components/ThemePicker';
 import { THEMES, type Hotkeys, type LLM, type Phase, type Theme } from './components/types';
+import { Tabs, TabsContent } from './components/ui/tabs';
 
 function mergeToolCall(prev: ToolCallEntry[], event: ToolProgress): ToolCallEntry[] {
   const i = prev.findIndex(t => t.id === event.id);
@@ -42,7 +43,7 @@ export default function App(): JSX.Element {
   const [error, setError] = useState('');
   const [softError, setSoftError] = useState('');
   const [refineFrom, setRefineFrom] = useState<Option | undefined>();
-  const [llm, setLlm] = useState<LLM>({ baseURL: '', apiKey: '', model: '' });
+  const [llm, setLlm] = useState<LLM>({ apiKey: '', model: '' });
   const [hotkeys, setHotkeys] = useState<Hotkeys>({ open: '', settings: '', close: '', copy: '' });
   const [toolCalls, setToolCalls] = useState<ToolCallEntry[]>([]);
   const [reasoning, setReasoning] = useState<ReasoningProgress[]>([]);
@@ -154,8 +155,6 @@ export default function App(): JSX.Element {
     return () => window.removeEventListener('keydown', onKey);
   }, [options, active]);
 
-  const current = options[active];
-
   if (phase === 'hidden') return <div style={{ display: 'none' }} />;
 
   const alertEl = <SoftAlert message={softError} onDismiss={() => setSoftError('')} />;
@@ -176,8 +175,8 @@ export default function App(): JSX.Element {
   }
 
   return (
-    <div className="overlay">
-      <TitleBar phase={phase} options={options} active={active} onSelect={setActive} />
+    <Tabs value={String(active)} onValueChange={value => setActive(Number(value))} className="overlay gap-0">
+      <TitleBar phase={phase} options={options} />
 
       {phase === 'loading' && (
         <div
@@ -192,9 +191,11 @@ export default function App(): JSX.Element {
         </div>
       )}
 
-      {phase === 'results' && current && (
-        <CodeView option={current} />
-      )}
+      {phase === 'results' && options.map((option, i) => (
+        <TabsContent key={i} value={String(i)} className="flex min-h-0">
+          <CodeView option={option} />
+        </TabsContent>
+      ))}
 
       {phase === 'error' && <ErrorView message={error} />}
 
@@ -203,8 +204,7 @@ export default function App(): JSX.Element {
           saved={saved}
           hint="q to close · ⌘K keymaps · ⌘T theme"
           fields={[
-            { label: 'base url', value: llm.baseURL, onChange: v => setLlm({ ...llm, baseURL: v }), placeholder: 'https://api.openai.com/v1', autoFocus: true },
-            { label: 'api key', value: llm.apiKey, onChange: v => setLlm({ ...llm, apiKey: v }), placeholder: 'sk-…', type: 'password' },
+            { label: 'AI Gateway API key', value: llm.apiKey, onChange: v => setLlm({ ...llm, apiKey: v }), placeholder: 'AI_GATEWAY_API_KEY', type: 'password' },
           ]}
         >
           <ModelPicker value={llm.model} onChange={model => setLlm({ ...llm, model })} />
@@ -230,6 +230,6 @@ export default function App(): JSX.Element {
         />
       )}
       {alertEl}
-    </div>
+    </Tabs>
   );
 }

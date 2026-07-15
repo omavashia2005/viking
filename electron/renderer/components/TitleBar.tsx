@@ -1,13 +1,11 @@
 import React from 'react';
 import type { Option } from '@/shared-types';
-import { Button } from './ui/button';
+import { TabsList, TabsTrigger } from './ui/tabs';
 import type { Phase } from './types';
 
-export function TitleBar({ phase, options, active, onSelect }: {
+export function TitleBar({ phase, options }: {
   phase: Phase;
   options: Option[];
-  active: number;
-  onSelect: (i: number) => void;
 }): JSX.Element {
   return (
     <header className="bar">
@@ -15,23 +13,18 @@ export function TitleBar({ phase, options, active, onSelect }: {
       <span className="sep">/</span>
       {phase === 'loading' && <span className="state pulse">gathering context · querying model</span>}
       {phase === 'error' && <span className="state err">error</span>}
-      {phase === 'provider' && <span className="state">provider</span>}
+      {phase === 'provider' && <span className="state">model</span>}
       {phase === 'keymaps' && <span className="state">keymaps</span>}
       {phase === 'theme' && <span className="state">theme</span>}
       {phase === 'results' && (
-        <nav className="tabs">
+        <TabsList aria-label="Code options" className="ml-3 h-7 [-webkit-app-region:no-drag]">
           {options.map((o, i) => (
-            <Button
-              key={i}
-              size="sm"
-              variant={i === active ? 'default' : 'outline'}
-              className="h-6 gap-1.5 rounded-full px-2.5 font-normal lowercase text-[10.5px]"
-              onClick={() => onSelect(i)}
-            >
-              <span className="text-[9.5px] opacity-55">⌘{i + 1}</span><span>{o.label}</span>
-            </Button>
+            <TabsTrigger key={i} value={String(i)} className="px-2 text-[10.5px] font-normal lowercase">
+              <span className="text-[9.5px] opacity-55">⌘{i + 1}</span>
+              <span>{o.label}</span>
+            </TabsTrigger>
           ))}
-        </nav>
+        </TabsList>
       )}
       <span className="hint">q</span>
     </header>

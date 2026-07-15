@@ -152,12 +152,12 @@ function hide(): void {
 
 function friendly(err: Error): string {
 	const m = err.message ?? String(err);
-	if (!config.llm.apiKey) return 'No API key. Set LLM_API_KEY (or OPENAI_API_KEY) in your shell and restart.';
+	if (!config.llm.apiKey) return 'No API key. Open model settings (⌘S) and enter an AI Gateway API key.';
 	if (/ENOENT/.test(m) && /fff-mcp/.test(m)) return `fff-mcp not found at ${config.mcp.fff.command}. Install it, or edit electron/main/agent/config.ts -> mcp.fff.command.`;
-	if (/401|invalid_api_key|Incorrect API key/i.test(m)) return 'API key was rejected. Check LLM_API_KEY and LLM_BASE_URL match the same provider.';
-	if (/ENOTFOUND|ECONNREFUSED|fetch failed/i.test(m)) return `Could not reach ${config.llm.baseURL}. Check the URL and your connection.`;
-	if (/model.+(not_found|does not exist)/i.test(m)) return `Model "${config.llm.model}" not available on this endpoint. Set LLM_MODEL to one your provider supports.`;
-	if (/ZodError|Invalid|Expected/.test(m)) return 'Model returned malformed output. Try again, or switch LLM_MODEL to a stronger model.';
+	if (/401|invalid_api_key|Incorrect API key|Unauthenticated/i.test(m)) return 'AI Gateway rejected the API key. Check it in model settings (⌘S).';
+	if (/ENOTFOUND|ECONNREFUSED|fetch failed/i.test(m)) return 'Could not reach Vercel AI Gateway. Check your connection.';
+	if (/model.+(not_found|does not exist)/i.test(m)) return `Model "${config.llm.model}" is unavailable. Choose another model in settings (⌘S).`;
+	if (/ZodError|Invalid|Expected/.test(m)) return 'Model returned malformed output. Try again, or choose a stronger model in settings (⌘S).';
 	return m;
 }
 

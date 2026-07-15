@@ -1,6 +1,5 @@
 import fs from 'node:fs';
-import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
-import { generateText, isLoopFinished, NoObjectGeneratedError, Output, type UserContent } from 'ai';
+import { createGateway, generateText, isLoopFinished, NoObjectGeneratedError, Output, type UserContent } from 'ai';
 import { config } from './config';
 import { LLMResponse, type Option, type ReasoningProgress } from './shared-types';
 import { prompts, type Context } from './prompts';
@@ -32,12 +31,7 @@ function seedContext(launch: LaunchArgs | undefined): SeedContextResult {
 export async function generate(input: userInput): Promise<LLMResult> {
 	const { userPrompt, screenshot, launch, onTool, onReasoning } = input;
 	const { cwd, activeFileSnippet } = seedContext(launch);
-	const model = createOpenAICompatible({
-		name: 'llm',
-		baseURL: config.llm.baseURL,
-		apiKey: config.llm.apiKey,
-		supportsStructuredOutputs: true,
-	})(config.llm.model);
+	const model = createGateway({ apiKey: config.llm.apiKey })(config.llm.model);
 
 	const ctx: Context = {
 		userPrompt,

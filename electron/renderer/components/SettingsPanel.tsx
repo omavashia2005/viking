@@ -14,10 +14,11 @@ export function SettingsPanel({ fields, saved, hint, children }: {
   fields: SettingsField[];
   saved: boolean;
   hint: string;
-  children?: React.ReactNode; // extra controls rendered after the fields
+  children?: React.ReactNode;
 }): JSX.Element {
   return (
     <div className="settings">
+      {children}
       {fields.map(f => (
         <label key={f.label}>
           <span>{f.label}</span>
@@ -32,7 +33,6 @@ export function SettingsPanel({ fields, saved, hint, children }: {
           />
         </label>
       ))}
-      {children}
       <div className="srow">
         <span className="autosave">{saved ? '✓ saved' : 'autosaves as you type'}</span>
         <span className="shint">{hint}</span>

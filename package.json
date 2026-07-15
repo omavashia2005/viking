@@ -11,7 +11,6 @@
     "setup": "npm run setup:build && node dist/setup.js"
   },
   "dependencies": {
-    "@ai-sdk/openai-compatible": "^3.0.10",
     "@ff-labs/fff-node": "^0.9.6",
     "@modelcontextprotocol/sdk": "^1.0.4",
     "@radix-ui/react-use-controllable-state": "^1.2.3",

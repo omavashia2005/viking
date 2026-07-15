@@ -9,11 +9,9 @@ export const config = {
 		close: 'q',                     // window-scoped; ignored while typing in an input
 		copy: 'c',                      // window-scoped: ⌘/Ctrl + this key copies the active option
 	},
-	// Any OpenAI-schema-compatible endpoint. Override via env.
 	llm: {
-		baseURL: process.env.LLM_BASE_URL ?? 'https://api.openai.com/v1',
-		apiKey: process.env.LLM_API_KEY ?? process.env.OPENAI_API_KEY ?? '',
-		model: process.env.LLM_MODEL ?? 'gpt-4o',
+		apiKey: process.env.AI_GATEWAY_API_KEY ?? '',
+		model: process.env.LLM_MODEL ?? 'anthropic/claude-opus-4.8',
 	},
 	theme: 'onyx', // overlay theme; see electron/renderer/themes.css for the available blocks
 	opacity: 0.62, // overlay glass opacity, 0..1

@@ -53,7 +53,6 @@
 .pulse { animation: p 1.4s ease-in-out infinite; }
 @keyframes p { 0%,100% { opacity: 0.45; } 50% { opacity: 1; } }
 .hint { margin-left: auto; font-size: 10px; border: 1px solid var(--border); padding: 2px 6px; border-radius: 4px; }
-.tabs { display: flex; gap: 6px; margin-left: 12px; -webkit-app-region: no-drag; }
 
 .prompt { display: flex; align-items: flex-start; gap: 12px; padding: 18px 20px;
   flex: 1; -webkit-app-region: drag; }
