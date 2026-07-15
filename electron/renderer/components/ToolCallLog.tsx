@@ -23,6 +23,7 @@ import { Spinner } from "./ui/spinner";
 export type ToolCallEntry = ToolProgress;
 
 const TOOL_PROGRESS_VERBS = [
+  "Working",
   "Searching",
   "Reading",
   "Inspecting",
@@ -32,7 +33,6 @@ const TOOL_PROGRESS_VERBS = [
   "Resolving",
   "Analyzing",
   "Validating",
-  "Planning",
   "Drafting",
   "Building",
   "Testing",
@@ -45,27 +45,20 @@ const TOOL_PROGRESS_VERBS = [
   "Finishing",
 ] as const;
 
-function ToolActivity(): JSX.Element {
-  const [verb, setVerb] = React.useState(0);
-
-  React.useEffect(() => {
-    const timer = window.setInterval(
-      () => setVerb((index) => (index + 1) % TOOL_PROGRESS_VERBS.length),
-      1600,
-    );
-    return () => window.clearInterval(timer);
-  }, []);
-
+function ToolActivity({ elapsed }: { elapsed: number }): JSX.Element {
+  const verb = TOOL_PROGRESS_VERBS[Math.floor(elapsed / 3) % TOOL_PROGRESS_VERBS.length];
   return (
     <TaskItem
       aria-label="Work in progress"
-      className="mt-2 pl-6 text-xs"
+      className="mt-2 flex items-center gap-3 text-sm"
       role="status"
     >
+      <span aria-hidden="true" className="text-foreground">•</span>
       <span aria-hidden="true">
-        <Shimmer as="span" duration={1.6}>
-          {`${TOOL_PROGRESS_VERBS[verb]}…`}
+        <Shimmer as="span" className="font-semibold" duration={1.6}>
+          {verb}
         </Shimmer>
+        <span className="text-muted-foreground"> ({elapsed}s)</span>
       </span>
     </TaskItem>
   );
@@ -154,6 +147,13 @@ export function ToolCallLog({
   calls: ToolCallEntry[];
   reasoning: ReasoningProgress[];
 }): JSX.Element {
+  const [elapsed, setElapsed] = React.useState(0);
+
+  React.useEffect(() => {
+    const timer = window.setInterval(() => setElapsed((seconds) => seconds + 1), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+
   if (calls.length === 0 && reasoning.length === 0) {
     return (
       <Task defaultOpen className="mx-auto mt-[100px] max-w-sm" role="status">
@@ -163,7 +163,7 @@ export function ToolCallLog({
             <Spinner className="text-primary" />
             Gathering context and querying the model
           </TaskItem>
-          <ToolActivity />
+          <ToolActivity elapsed={elapsed} />
         </TaskContent>
       </Task>
     );
@@ -202,11 +202,12 @@ export function ToolCallLog({
             </span>
           </TaskItem>
         ))}
+        <ToolActivity elapsed={elapsed} />
       </TaskContent>
     </Task>
   );
 
-  if (reasoning.length === 0) return <>{toolTask}<ToolActivity /></>;
+  if (reasoning.length === 0) return <>{toolTask}</>;
 
   return (
     <ChainOfThought defaultOpen>
@@ -222,7 +223,7 @@ export function ToolCallLog({
           />
         ))}
         {toolTask}
-        <ToolActivity />
+        {calls.length === 0 && <ToolActivity elapsed={elapsed} />}
       </ChainOfThoughtContent>
     </ChainOfThought>
   );

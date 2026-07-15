@@ -66,7 +66,6 @@ export default function App(): JSX.Element {
   const settingsReady = useRef(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const logRef = useRef<HTMLDivElement>(null);
-  const stickToBottom = useRef(true);
 
   useLayoutEffect(() => {
     if (!window.viking) {
@@ -81,7 +80,7 @@ export default function App(): JSX.Element {
       setRefineFrom(mode === 'followup' ? refineFrom : undefined);
       setTimeout(() => inputRef.current?.focus(), 50);
     });
-    window.viking.on('viking:loading', () => { setSoftError(''); setToolCalls([]); setReasoning([]); stickToBottom.current = true; setPhase('loading'); });
+    window.viking.on('viking:loading', () => { setSoftError(''); setToolCalls([]); setReasoning([]); setPhase('loading'); });
     window.viking.on('viking:tool', (event: ToolProgress) => setToolCalls(prev => mergeToolCall(prev, event)));
     window.viking.on('viking:reasoning', (event: ReasoningProgress) => setReasoning(prev => [...prev, event]));
     window.viking.on('viking:result', (p: { options: Option[]; error?: string; softError?: string }) => {
@@ -107,11 +106,19 @@ export default function App(): JSX.Element {
 
   useEffect(() => { window.viking.setActive(active); }, [active]);
 
-  // Follow the tool log as it grows, unless the user scrolled away from the bottom.
+  // Loading is a live tail: keep the newest work visible as content grows or the window resizes.
   useEffect(() => {
     const el = logRef.current;
-    if (phase === 'loading' && el && stickToBottom.current) el.scrollTop = el.scrollHeight;
+    if (phase === 'loading' && el) el.scrollTop = el.scrollHeight;
   }, [phase, reasoning, toolCalls]);
+
+  useEffect(() => {
+    const el = logRef.current;
+    if (phase !== 'loading' || !el) return;
+    const observer = new ResizeObserver(() => { el.scrollTop = el.scrollHeight; });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [phase]);
 
   // Auto-dismiss the soft alert after ~5s. Timer resets whenever a new softError arrives.
   useEffect(() => {
@@ -203,14 +210,7 @@ export default function App(): JSX.Element {
       <TitleBar phase={phase} options={options} />
 
       {phase === 'loading' && (
-        <div
-          className="toollog"
-          ref={logRef}
-          onScroll={e => {
-            const el = e.currentTarget;
-            stickToBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 24;
-          }}
-        >
+        <div className="toollog" ref={logRef}>
           <ToolCallLog calls={toolCalls} reasoning={reasoning} />
         </div>
       )}
