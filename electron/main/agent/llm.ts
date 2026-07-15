@@ -49,7 +49,7 @@ export async function generate(input: userInput): Promise<LLMResult> {
 
 	const userContent: UserContent = [{ type: 'text', text: prompts.user(ctx) }];
 
-	if (screenshot) userContent.push({ type: 'image', image: screenshot });
+	if (screenshot) userContent.push({ type: 'file', mediaType: 'image/jpeg', data: screenshot });
 	console.log('[viking:llm] query', { model: config.llm.model, cwd, activeFile: launch?.activeFile, hasScreenshot: !!screenshot, prompt: prompts.user(ctx) });
 
 	// One persistent fff-mcp for the whole call — first spawn scans async (~50ms), reused calls hit the warm index.
