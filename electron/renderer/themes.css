@@ -5,6 +5,7 @@
    highlights read as brightness, not hue */
 :root {
   --glass-alpha: 0.62; /* overlay glass opacity; user-tunable from the theme page */
+  --glass-blur: 14px; /* backdrop frost; heavier in the glass theme */
   --background: transparent;
   --foreground: #f2f2f2;
   --card: rgba(0, 0, 0, var(--glass-alpha));
@@ -26,6 +27,32 @@
   --input: rgba(255, 255, 255, 0.14);
   --ring: #ffffff;
   --radius: 0.5rem;
+}
+
+/* glass — Apple-style light glass (default): bright frost, dark ink, system-blue accent.
+   --glass-alpha tunes the white frost itself, so the slider controls how see-through
+   the glass is, never the window. */
+[data-theme="glass"] {
+  --glass-blur: 30px;
+  --foreground: #1d1d1f;
+  --card: rgba(255, 255, 255, var(--glass-alpha));
+  --card-foreground: #1d1d1f;
+  --popover: rgba(255, 255, 255, 0.92);
+  --popover-foreground: #1d1d1f;
+  --primary: #007aff;
+  --primary-foreground: #ffffff;
+  --secondary: rgba(0, 0, 0, 0.05);
+  --secondary-foreground: #1d1d1f;
+  --muted: rgba(0, 0, 0, 0.05);
+  --muted-foreground: rgba(0, 0, 0, 0.5);
+  --accent: rgba(0, 0, 0, 0.06);
+  --accent-foreground: #1d1d1f;
+  --destructive: #ff3b30;
+  --destructive-foreground: #ffffff;
+  --warning: #9a6a00;
+  --border: rgba(0, 0, 0, 0.1);
+  --input: rgba(0, 0, 0, 0.07);
+  --ring: #007aff;
 }
 
 /* acid — the original viking look: warm cream on smoked glass, acid-green accent */

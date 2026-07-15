@@ -47,7 +47,7 @@ export default function App(): JSX.Element {
   const [hotkeys, setHotkeys] = useState<Hotkeys>({ open: '', settings: '', close: '', copy: '' });
   const [toolCalls, setToolCalls] = useState<ToolCallEntry[]>([]);
   const [reasoning, setReasoning] = useState<ReasoningProgress[]>([]);
-  const [theme, setTheme] = useState<Theme>('onyx');
+  const [theme, setTheme] = useState<Theme>('glass');
   const [opacity, setOpacity] = useState(0.62);
   const [saved, setSaved] = useState(false);
   const settingsReady = useRef(false);
