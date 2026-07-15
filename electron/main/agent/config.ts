@@ -13,7 +13,7 @@ export const config = {
 		apiKey: process.env.AI_GATEWAY_API_KEY ?? '',
 		model: process.env.LLM_MODEL ?? 'anthropic/claude-opus-4.8',
 	},
-	theme: 'glass', // overlay theme; see electron/renderer/themes.css for the available blocks
+	theme: 'onyx', // overlay theme; see electron/renderer/themes.css for the available blocks
 	opacity: 0.62, // overlay glass opacity, 0..1
 	// Default doc lookup; user retunes by editing.
 	// ponytail: single language for v0, add detection from screenshot when one language stops being enough.
