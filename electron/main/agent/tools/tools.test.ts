@@ -6,15 +6,15 @@ import { resolveReadPath } from './tools';
 
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'viking-read-file-'));
 try {
-  fs.mkdirSync(path.join(root, '.git'));
-  fs.mkdirSync(path.join(root, 'electron/main/agent'), { recursive: true });
-  const file = path.join(root, 'electron/main/agent/tools.ts');
-  fs.writeFileSync(file, 'ok');
+	fs.mkdirSync(path.join(root, '.git'));
+	fs.mkdirSync(path.join(root, 'electron/main/agent'), { recursive: true });
+	const file = path.join(root, 'electron/main/agent/tools.ts');
+	fs.writeFileSync(file, 'ok');
 
-  assert.equal(
-    resolveReadPath(path.join(root, 'electron/main'), 'electron/main/agent/tools.ts'),
-    file,
-  );
+	assert.equal(
+		resolveReadPath(path.join(root, 'electron/main'), 'electron/main/agent/tools.ts'),
+		file,
+	);
 } finally {
-  fs.rmSync(root, { recursive: true, force: true });
+	fs.rmSync(root, { recursive: true, force: true });
 }

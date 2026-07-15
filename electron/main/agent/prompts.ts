@@ -1,23 +1,23 @@
 import { config } from './config';
 
 export type Context = {
-  userPrompt?: string;
-  language: string;
-  docs: string;
-  codebase: string;
-  screenshot?: string;
+	userPrompt?: string;
+	language: string;
+	docs: string;
+	codebase: string;
+	screenshot?: string;
 };
 
 type PromptUser = (context: Context) => string;
 
 type Prompts = {
-  system: string;
-  user: PromptUser;
+	system: string;
+	user: PromptUser;
 };
 
 // One place for prompts. Edit phrasing here, not at the call site.
 export const prompts: Prompts = {
-  system: `You are a coding-snippet generator embedded in a floating overlay.
+	system: `You are a coding-snippet generator embedded in a floating overlay.
 Return exactly ${config.numOptions} distinct, idiomatic ways to write the snippet the user wants.
 Each option must be runnable code only — no prose, no comments unless idiomatic, no markdown fences.
 Vary the approach across options (e.g. naive vs. stdlib vs. third-party vs. one-liner).
@@ -39,12 +39,12 @@ Setting "startLine": read_file prefixes every line with "N: " and grep_codebase 
   • addition at end of file → last line + 1
 Only omit "startLine" if you called read_file on the target and it genuinely offers no anchor (empty file, unclear insertion point). Never guess a number without reading the file first.`,
 
-  user: ctx => {
-    const parts: string[] = [];
-    if (ctx.userPrompt) parts.push(`Request:\n${ctx.userPrompt}`);
-    else parts.push(`No explicit prompt. Infer the desired snippet from the screenshot and the surrounding code.`);
-    if (ctx.docs) parts.push(`Relevant docs:\n${ctx.docs.slice(0, 4000)}`);
-    if (ctx.codebase) parts.push(`Relevant code from the user's project:\n${ctx.codebase.slice(0, 4000)}`);
-    return parts.join('\n\n');
-  },
+	user: ctx => {
+		const parts: string[] = [];
+		if (ctx.userPrompt) parts.push(`Request:\n${ctx.userPrompt}`);
+		else parts.push(`No explicit prompt. Infer the desired snippet from the screenshot and the surrounding code.`);
+		if (ctx.docs) parts.push(`Relevant docs:\n${ctx.docs.slice(0, 4000)}`);
+		if (ctx.codebase) parts.push(`Relevant code from the user's project:\n${ctx.codebase.slice(0, 4000)}`);
+		return parts.join('\n\n');
+	},
 };
