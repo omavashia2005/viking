@@ -6,6 +6,7 @@ import { generate, type LaunchArgs } from './agent/llm';
 import type { Option, ReasoningProgress } from './agent/shared-types';
 import { closeMcpConnections, warmMcpConnections } from './agent/tools/tools';
 import type { ToolProgress } from './agent/tools/shared-types';
+import { getGatewayModels } from './gateway-models';
 
 // Caller passes the payload after '--args'. Chromium/Electron may inject its
 // own flags between '--args' and our payload, so skip flag-shaped tokens and
@@ -222,6 +223,7 @@ app.whenReady().then(() => {
 	});
 	ipcMain.on('viking:hide', hide);
 	ipcMain.handle('viking:getSettings', () => ({ llm: { ...config.llm }, hotkeys: { ...config.hotkeys }, theme: config.theme }));
+	ipcMain.handle('viking:getModels', getGatewayModels);
 	ipcMain.handle('viking:saveSettings', (_e, s: Persisted) => {
 		const prevOpen = config.hotkeys.open;
 		saveSettings(s);

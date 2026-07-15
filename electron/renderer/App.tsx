@@ -1,5 +1,5 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import type { Option, ReasoningProgress, ToolProgress } from '@/shared-types';
+import type { GatewayModel, Option, ReasoningProgress, ToolProgress } from '@/shared-types';
 import { CodeView } from './components/CodeView';
 import { ErrorView } from './components/ErrorView';
 import { ModelPicker } from './components/ModelPicker';
@@ -42,6 +42,7 @@ declare global {
       resize: (height: number) => void; // spotlight-only prompt growth
       hide: () => void;
       getSettings: () => Promise<{ llm: LLM; hotkeys: Hotkeys; theme: Theme }>;
+      getModels: () => Promise<GatewayModel[]>;
       saveSettings: (s: { llm?: Partial<LLM>; hotkeys?: Partial<Hotkeys>; theme?: Theme }) => Promise<void>;
     };
   }

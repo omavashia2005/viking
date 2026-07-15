@@ -35,3 +35,9 @@ export const ReasoningProgress = z.object({
 	text: z.string().min(1),
 });
 export type ReasoningProgress = z.infer<typeof ReasoningProgress>;
+
+export type GatewayModel = {
+	id: string;
+	name: string;
+	provider: string;
+};
