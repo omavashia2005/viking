@@ -27,7 +27,7 @@ export const Option = z.object({
 });
 export type Option = z.infer<typeof Option>;
 
-export const LLMResponse = z.object({ options: z.array(Option).min(1).max(6) });
+export const LLMResponse = z.object({ options: z.array(Option).min(1) });
 export type LLMResponse = z.infer<typeof LLMResponse>;
 
 export const ReasoningProgress = z.object({

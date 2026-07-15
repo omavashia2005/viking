@@ -1,6 +1,6 @@
 # [WIP] viking
 
-Floating overlay that shows 3–4 ways to write the snippet you're asking for.
+Floating overlay that shows as many useful alternatives as your request warrants.
 Pulls live context from Context7 (language docs) and `fff-mcp` (codebase grep),
 plus a screenshot of your screen. Models run through Vercel AI Gateway.
 

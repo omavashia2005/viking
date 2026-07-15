@@ -1,5 +1,3 @@
-import { config } from './config';
-
 export type Context = {
 	userPrompt?: string;
 	language: string;
@@ -18,7 +16,7 @@ type Prompts = {
 // One place for prompts. Edit phrasing here, not at the call site.
 export const prompts: Prompts = {
 	system: `You are a coding-snippet generator embedded in a floating overlay.
-Return exactly ${config.numOptions} distinct, idiomatic ways to write the snippet the user wants.
+Return as many distinct, useful, idiomatic options as the request warrants.
 Each option must be runnable code only — no prose, no comments unless idiomatic, no markdown fences.
 Vary the approach across options (e.g. naive vs. stdlib vs. third-party vs. one-liner).
 
