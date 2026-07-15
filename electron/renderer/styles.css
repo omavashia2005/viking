@@ -79,31 +79,12 @@
   border-bottom: 1px solid var(--border); }
 
 .codewrap { flex: 1; display: flex; flex-direction: column; min-height: 0; -webkit-app-region: no-drag; }
-.codehead { display: flex; align-items: center; justify-content: space-between;
-  padding: 8px 18px; border-bottom: 1px solid var(--border);
-  background: rgba(0,0,0,0.18); }
-.lang { color: var(--muted-foreground); font-size: 10.5px; text-transform: lowercase; letter-spacing: 0.12em; }
-.file { color: var(--muted-foreground); font-size: 10.5px; font-family: ui-monospace, monospace; margin-left: 10px; opacity: 0.75; }
-.copyhint { color: var(--muted-foreground); font-size: 10.5px; text-transform: lowercase; letter-spacing: 0.1em;
-  transition: color 140ms ease; }
-.code { flex: 1; margin: 0; padding: 14px 18px; overflow-y: auto; overflow-x: hidden;
-  font-size: 13px; line-height: 1.55; white-space: pre-wrap; word-break: break-word;
-  user-select: text; background: transparent; cursor: copy;
-  /* responsive scroll: isolate paint, give it its own GPU layer, kill rubber-band */
-  contain: paint; transform: translateZ(0); will-change: scroll-position;
-  overscroll-behavior: contain; scrollbar-gutter: stable; }
-.code:hover ~ .codehead .copyhint, .codewrap:hover .copyhint { color: var(--foreground); }
-.code code.hljs, .code code { background: transparent !important; padding: 0; display: block; }
-.ln { display: grid; grid-template-columns: 2.5em 1fr; column-gap: 14px; }
-.gutter { color: var(--muted-foreground); opacity: 0.45; text-align: right; user-select: none;
-  font-variant-numeric: tabular-nums; -webkit-user-select: none; }
-.lc { white-space: pre-wrap; word-break: break-word; min-width: 0; }
 /* shared scrollbar treatment — thinner, less paint-heavy */
-.code::-webkit-scrollbar, .settings::-webkit-scrollbar, .toollog::-webkit-scrollbar, .prompt textarea::-webkit-scrollbar { width: 6px; height: 6px; }
-.code::-webkit-scrollbar-track, .settings::-webkit-scrollbar-track, .toollog::-webkit-scrollbar-track, .prompt textarea::-webkit-scrollbar-track { background: transparent; }
-.code::-webkit-scrollbar-thumb, .settings::-webkit-scrollbar-thumb, .toollog::-webkit-scrollbar-thumb, .prompt textarea::-webkit-scrollbar-thumb {
+.codewrap [data-language] > div::-webkit-scrollbar, .settings::-webkit-scrollbar, .toollog::-webkit-scrollbar, .prompt textarea::-webkit-scrollbar { width: 6px; height: 6px; }
+.codewrap [data-language] > div::-webkit-scrollbar-track, .settings::-webkit-scrollbar-track, .toollog::-webkit-scrollbar-track, .prompt textarea::-webkit-scrollbar-track { background: transparent; }
+.codewrap [data-language] > div::-webkit-scrollbar-thumb, .settings::-webkit-scrollbar-thumb, .toollog::-webkit-scrollbar-thumb, .prompt textarea::-webkit-scrollbar-thumb {
   background: color-mix(in srgb, var(--foreground) 14%, transparent); border-radius: 3px; transition: background 120ms ease; }
-.code::-webkit-scrollbar-thumb:hover, .settings::-webkit-scrollbar-thumb:hover, .toollog::-webkit-scrollbar-thumb:hover, .prompt textarea::-webkit-scrollbar-thumb:hover {
+.codewrap [data-language] > div::-webkit-scrollbar-thumb:hover, .settings::-webkit-scrollbar-thumb:hover, .toollog::-webkit-scrollbar-thumb:hover, .prompt textarea::-webkit-scrollbar-thumb:hover {
   background: color-mix(in srgb, var(--foreground) 32%, transparent); }
 
 .errbody { flex: 1; padding: 28px 26px; display: flex; flex-direction: column;

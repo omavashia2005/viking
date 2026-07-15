@@ -1,40 +1,43 @@
-import React from 'react';
-import type { Option } from '@/shared-types';
+import React from "react";
+import { CodeLanguage, type Option } from "@/shared-types";
+import {
+  CodeBlock,
+  CodeBlockActions,
+  CodeBlockCopyButton,
+  CodeBlockFilename,
+  CodeBlockHeader,
+  CodeBlockTitle,
+} from "@/src/components/ai-elements/code-block";
+import { FileIcon } from "lucide-react";
 
-export function CodeView({ option, lines, copied, onCopy }: {
-  option: Option;
-  lines: string[];
-  copied: boolean;
-  onCopy: () => void;
-}): JSX.Element {
+export function CodeView({ option }: { option: Option }): JSX.Element {
+  const parsedLanguage = CodeLanguage.safeParse(option.language);
+  const language = parsedLanguage.success ? parsedLanguage.data : "text";
+  const filename = option.file.split("/").pop() ?? option.file;
+
   return (
-    <div className="codewrap">
-      <div className="codehead">
-        <span className="lang">{option.language}</span>
-        {option.file && (
-          <span className="file" title={option.file}>
-            {option.file.split('/').pop()}{option.startLine ? `:${option.startLine}` : ''}
-          </span>
-        )}
-        <span className="copyhint">{copied ? '✓ copied' : 'click or ⌘C to copy'}</span>
-      </div>
-      <pre
-        className="code"
-        title="click to copy"
-        onClick={() => {
-          if (window.getSelection()?.toString()) return; // user is selecting, don't hijack
-          onCopy();
-        }}
+    <div className="codewrap p-4">
+      <CodeBlock
+        className="flex min-h-0 flex-1 flex-col [&>div:last-child]:min-h-0 [&>div:last-child]:flex-1"
+        code={option.code}
+        language={language}
+        showLineNumbers
+        startLine={option.startLine}
       >
-        <code>
-          {lines.map((line, i) => (
-            <div key={i} className="ln">
-              <span className="gutter">{(option.startLine ?? 1) + i}</span>
-              <span className="lc" dangerouslySetInnerHTML={{ __html: line || ' ' }} />
-            </div>
-          ))}
-        </code>
-      </pre>
+        <CodeBlockHeader>
+          <CodeBlockTitle title={option.file}>
+            <FileIcon className="size-3.5" />
+            <CodeBlockFilename>
+              {filename}
+              {option.startLine ? `:${option.startLine}` : ""}
+            </CodeBlockFilename>
+            <span>{option.language}</span>
+          </CodeBlockTitle>
+          <CodeBlockActions>
+            <CodeBlockCopyButton />
+          </CodeBlockActions>
+        </CodeBlockHeader>
+      </CodeBlock>
     </div>
   );
 }

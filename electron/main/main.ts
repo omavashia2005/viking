@@ -3,7 +3,7 @@ import path from 'node:path';
 import fs from 'node:fs';
 import { config } from './agent/config';
 import { generate, type LaunchArgs } from './agent/llm';
-import type { Option } from './agent/shared-types';
+import type { Option, ReasoningProgress } from './agent/shared-types';
 import type { ToolProgress } from './agent/tools/shared-types';
 
 // Caller passes the payload after '--args'. Chromium/Electron may inject its
@@ -181,6 +181,7 @@ async function run(prompt: string | undefined, refineFrom?: Option): Promise<voi
 			screenshot: screenshot ?? '',
 			launch: currentLaunch,
 			onTool: (event: ToolProgress) => win?.webContents.send('viking:tool', event),
+			onReasoning: (event: ReasoningProgress) => win?.webContents.send('viking:reasoning', event),
 		});
 		lastOptions = options;
 		activeIdx = 0;

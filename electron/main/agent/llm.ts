@@ -2,20 +2,22 @@ import fs from 'node:fs';
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
 import { generateText, isLoopFinished, NoObjectGeneratedError, Output, type UserContent } from 'ai';
 import { config } from './config';
-import { LLMResponse, type Option } from './shared-types';
+import { LLMResponse, type Option, type ReasoningProgress } from './shared-types';
 import { prompts, type Context } from './prompts';
 import { buildTools, openMcp, toolSummary } from './tools/tools';
-import type { ToolProgress } from './tools/shared-types';
+import { ToolOutput, type ToolProgress } from './tools/shared-types';
 
 export type LaunchArgs = { cwd?: string; activeFile?: string };
 type SeedContextResult = { cwd: string; activeFileSnippet: string };
 type GenerateToolProgressCallback = (event: ToolProgress) => void;
+type GenerateReasoningProgressCallback = (event: ReasoningProgress) => void;
 type LLMResult = { options: Option[]; reasoning?: string; softError?: string };
 type userInput = {
 	userPrompt: string;
 	screenshot: string;
 	launch?: LaunchArgs;
 	onTool?: GenerateToolProgressCallback;
+	onReasoning?: GenerateReasoningProgressCallback;
 };
 
 function seedContext(launch: LaunchArgs | undefined): SeedContextResult {
@@ -28,7 +30,7 @@ function seedContext(launch: LaunchArgs | undefined): SeedContextResult {
 }
 
 export async function generate(input: userInput): Promise<LLMResult> {
-	const { userPrompt, screenshot, launch, onTool } = input;
+	const { userPrompt, screenshot, launch, onTool, onReasoning } = input;
 	const { cwd, activeFileSnippet } = seedContext(launch);
 	const model = createOpenAICompatible({
 		name: 'llm',
@@ -53,6 +55,7 @@ export async function generate(input: userInput): Promise<LLMResult> {
 	// One persistent fff-mcp for the whole call — first spawn scans async (~50ms), reused calls hit the warm index.
 	const fff = await openMcp({ command: config.mcp.fff.command, args: [cwd] });
 	await new Promise(r => setTimeout(r, 250)); // ponytail: let fff finish its initial scan; drop when fff signals "ready".
+	let reasoningStep = 0;
 	try {
 		const result = await generateText({
 			model,
@@ -74,9 +77,12 @@ export async function generate(input: userInput): Promise<LLMResult> {
 					onTool?.({ id: toolCall.toolCallId, name: toolCall.toolName, status: 'error', error });
 					return;
 				}
-				const value = toolOutput.output;
+				const value = ToolOutput.parse(toolOutput.output);
 				console.log(`[viking:llm] tool ← ${toolCall.toolName}`, value.slice(0, 400) + (value.length > 400 ? `… (${value.length}b)` : ''));
 				onTool?.({ id: toolCall.toolCallId, name: toolCall.toolName, status: 'done', summary: toolSummary(toolCall.toolName, args, value) });
+			},
+			onStepEnd: ({ reasoningText }) => {
+				if (reasoningText) onReasoning?.({ id: reasoningStep++, text: reasoningText });
 			},
 		});
 		const options = result.output.options;

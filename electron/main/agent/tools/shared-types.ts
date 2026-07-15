@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+export const ToolOutput = z.string();
+
 export const QueryArgs = z.object({ query: z.string() }).passthrough();
 export type QueryArgs = z.infer<typeof QueryArgs>;
 

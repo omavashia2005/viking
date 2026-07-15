@@ -1,8 +1,8 @@
-import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import hljs from 'highlight.js/lib/common';
-import type { Option, ToolProgress } from '@/shared-types';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import type { Option, ReasoningProgress, ToolProgress } from '@/shared-types';
 import { CodeView } from './components/CodeView';
 import { ErrorView } from './components/ErrorView';
+import { ModelPicker } from './components/ModelPicker';
 import { SettingsPanel } from './components/SettingsPanel';
 import { SoftAlert } from './components/SoftAlert';
 import { Spotlight } from './components/Spotlight';
@@ -42,10 +42,10 @@ export default function App(): JSX.Element {
   const [error, setError] = useState('');
   const [softError, setSoftError] = useState('');
   const [refineFrom, setRefineFrom] = useState<Option | undefined>();
-  const [copied, setCopied] = useState(false);
   const [llm, setLlm] = useState<LLM>({ baseURL: '', apiKey: '', model: '' });
   const [hotkeys, setHotkeys] = useState<Hotkeys>({ open: '', settings: '', close: '', copy: '' });
   const [toolCalls, setToolCalls] = useState<ToolCallEntry[]>([]);
+  const [reasoning, setReasoning] = useState<ReasoningProgress[]>([]);
   const [theme, setTheme] = useState<Theme>('onyx');
   const [opacity, setOpacity] = useState(0.62);
   const [saved, setSaved] = useState(false);
@@ -61,13 +61,14 @@ export default function App(): JSX.Element {
     }
     window.viking.on('viking:show', ({ mode, refineFrom }: { mode: 'textbox' | 'followup'; refineFrom?: Option }) => {
       console.log('[viking] show', mode);
-      setError(''); setSoftError(''); setPrompt(''); setCopied(false); setToolCalls([]);
+      setError(''); setSoftError(''); setPrompt(''); setToolCalls([]); setReasoning([]);
       setPhase('textbox');
       setRefineFrom(mode === 'followup' ? refineFrom : undefined);
       setTimeout(() => inputRef.current?.focus(), 50);
     });
-    window.viking.on('viking:loading', () => { setSoftError(''); setToolCalls([]); stickToBottom.current = true; setPhase('loading'); });
+    window.viking.on('viking:loading', () => { setSoftError(''); setToolCalls([]); setReasoning([]); stickToBottom.current = true; setPhase('loading'); });
     window.viking.on('viking:tool', (event: ToolProgress) => setToolCalls(prev => mergeToolCall(prev, event)));
+    window.viking.on('viking:reasoning', (event: ReasoningProgress) => setReasoning(prev => [...prev, event]));
     window.viking.on('viking:result', (p: { options: Option[]; error?: string; softError?: string }) => {
       setToolCalls([]);
       if (p.error) { setError(p.error); setPhase('error'); return; }
@@ -95,7 +96,7 @@ export default function App(): JSX.Element {
   useEffect(() => {
     const el = logRef.current;
     if (phase === 'loading' && el && stickToBottom.current) el.scrollTop = el.scrollHeight;
-  }, [phase, toolCalls]);
+  }, [phase, reasoning, toolCalls]);
 
   // Auto-dismiss the soft alert after ~5s. Timer resets whenever a new softError arrives.
   useEffect(() => {
@@ -147,7 +148,6 @@ export default function App(): JSX.Element {
         if (window.getSelection()?.toString()) return; // user is doing a real copy
         e.preventDefault();
         await navigator.clipboard.writeText(options[active].code);
-        setCopied(true); setTimeout(() => setCopied(false), 1400);
       }
     };
     window.addEventListener('keydown', onKey);
@@ -155,19 +155,6 @@ export default function App(): JSX.Element {
   }, [options, active]);
 
   const current = options[active];
-  const highlightedLines = useMemo(() => {
-    if (!current) return [] as string[];
-    let html = current.code;
-    try {
-      const lang = current.language && hljs.getLanguage(current.language) ? current.language : undefined;
-      html = lang
-        ? hljs.highlight(current.code, { language: lang, ignoreIllegals: true }).value
-        : hljs.highlightAuto(current.code).value;
-    } catch {}
-    // ponytail: naive split — a multi-line hljs span (block comment, template string) can bleed styling
-    // across the newline. Swap for per-line highlighting if visible in real snippets.
-    return html.split('\n');
-  }, [current]);
 
   if (phase === 'hidden') return <div style={{ display: 'none' }} />;
 
@@ -201,20 +188,12 @@ export default function App(): JSX.Element {
             stickToBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 24;
           }}
         >
-          <ToolCallLog calls={toolCalls} />
+          <ToolCallLog calls={toolCalls} reasoning={reasoning} />
         </div>
       )}
 
       {phase === 'results' && current && (
-        <CodeView
-          option={current}
-          lines={highlightedLines}
-          copied={copied}
-          onCopy={async () => {
-            await navigator.clipboard.writeText(current.code);
-            setCopied(true); setTimeout(() => setCopied(false), 1400);
-          }}
-        />
+        <CodeView option={current} />
       )}
 
       {phase === 'error' && <ErrorView message={error} />}
@@ -226,9 +205,10 @@ export default function App(): JSX.Element {
           fields={[
             { label: 'base url', value: llm.baseURL, onChange: v => setLlm({ ...llm, baseURL: v }), placeholder: 'https://api.openai.com/v1', autoFocus: true },
             { label: 'api key', value: llm.apiKey, onChange: v => setLlm({ ...llm, apiKey: v }), placeholder: 'sk-…', type: 'password' },
-            { label: 'model', value: llm.model, onChange: v => setLlm({ ...llm, model: v }), placeholder: 'gpt-4o' },
           ]}
-        />
+        >
+          <ModelPicker value={llm.model} onChange={model => setLlm({ ...llm, model })} />
+        </SettingsPanel>
       )}
 
       {phase === 'theme' && (

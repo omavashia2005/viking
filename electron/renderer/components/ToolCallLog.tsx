@@ -1,8 +1,23 @@
-import React from 'react';
-import { CheckIcon, TriangleAlertIcon } from 'lucide-react';
-import type { ToolProgress, ToolSummary } from '@/shared-types';
-import { Marker, MarkerContent, MarkerIcon } from './ui/marker';
-import { Spinner } from './ui/spinner';
+import React from "react";
+import { CheckIcon, TriangleAlertIcon } from "lucide-react";
+import type {
+  ReasoningProgress,
+  ToolProgress,
+  ToolSummary,
+} from "@/shared-types";
+import {
+  ChainOfThought,
+  ChainOfThoughtContent,
+  ChainOfThoughtHeader,
+  ChainOfThoughtStep,
+} from "@/src/components/ai-elements/chain-of-thought";
+import {
+  Task,
+  TaskContent,
+  TaskItem,
+  TaskTrigger,
+} from "@/src/components/ai-elements/task";
+import { Spinner } from "./ui/spinner";
 
 export type ToolCallEntry = ToolProgress;
 
@@ -12,81 +27,151 @@ function clip(s: string): string {
 
 function Preview({ lines }: { lines?: string[] }): JSX.Element | null {
   if (!lines?.length) return null;
-  return <span className="text-muted-foreground"> · {clip(lines.join(' | '))}</span>;
+  return (
+    <span className="text-muted-foreground"> · {clip(lines.join(" | "))}</span>
+  );
 }
 
 function Summary({ summary }: { summary?: ToolSummary }): JSX.Element | null {
   if (!summary) return null;
-  if (summary.type === 'search') {
+  if (summary.type === "search") {
     return (
       <>
         <span className="text-muted-foreground"> · query: {summary.query}</span>
-        {summary.lineCount !== undefined && <span className="text-muted-foreground"> · {summary.lineCount} lines</span>}
+        {summary.lineCount !== undefined && (
+          <span className="text-muted-foreground">
+            {" "}
+            · {summary.lineCount} lines
+          </span>
+        )}
         <Preview lines={summary.preview} />
       </>
     );
   }
-  if (summary.type === 'read_file') {
+  if (summary.type === "read_file") {
     return (
       <span className="text-muted-foreground">
-        {' '}· file: {summary.path}{summary.startLine ? `:${summary.startLine}${summary.endLine ? `-${summary.endLine}` : ''}` : ''}
+        {" "}
+        · file: {summary.path}
+        {summary.startLine
+          ? `:${summary.startLine}${summary.endLine ? `-${summary.endLine}` : ""}`
+          : ""}
       </span>
     );
   }
-  if (summary.type === 'library') {
+  if (summary.type === "library") {
     return (
       <>
-        {summary.libraryName && <span className="text-muted-foreground"> · library: {summary.libraryName}</span>}
-        {summary.libraryId && <span className="text-muted-foreground"> · docs: {summary.libraryId}</span>}
-        {summary.topic && <span className="text-muted-foreground"> · topic: {summary.topic}</span>}
+        {summary.libraryName && (
+          <span className="text-muted-foreground">
+            {" "}
+            · library: {summary.libraryName}
+          </span>
+        )}
+        {summary.libraryId && (
+          <span className="text-muted-foreground">
+            {" "}
+            · docs: {summary.libraryId}
+          </span>
+        )}
+        {summary.topic && (
+          <span className="text-muted-foreground">
+            {" "}
+            · topic: {summary.topic}
+          </span>
+        )}
         <Preview lines={summary.preview} />
       </>
     );
   }
   return (
     <>
-      {summary.args && <span className="text-muted-foreground"> · args: {clip(JSON.stringify(summary.args))}</span>}
+      {summary.args && (
+        <span className="text-muted-foreground">
+          {" "}
+          · args: {clip(JSON.stringify(summary.args))}
+        </span>
+      )}
       <Preview lines={summary.preview} />
     </>
   );
 }
 
-export function ToolCallLog({ calls }: { calls: ToolCallEntry[] }): JSX.Element {
-  if (calls.length === 0) {
+export function ToolCallLog({
+  calls,
+  reasoning,
+}: {
+  calls: ToolCallEntry[];
+  reasoning: ReasoningProgress[];
+}): JSX.Element {
+  if (calls.length === 0 && reasoning.length === 0) {
     return (
-      <Marker role="status" className="mt-[120px] justify-center">
-        <MarkerIcon>
-          <Spinner className="text-primary" />
-        </MarkerIcon>
-        <MarkerContent className="pulse lowercase tracking-[0.18em]">thinking</MarkerContent>
-      </Marker>
+      <Task defaultOpen className="mx-auto mt-[100px] max-w-sm" role="status">
+        <TaskTrigger title="Thinking" />
+        <TaskContent>
+          <TaskItem className="flex items-center gap-2">
+            <Spinner className="text-primary" />
+            Gathering context and querying the model
+          </TaskItem>
+        </TaskContent>
+      </Task>
     );
   }
-  return (
-    <>
-      {calls.map(t => (
-        <Marker
-          key={t.id}
-          variant="border"
-          role={t.status === 'running' ? 'status' : undefined}
-          className="py-2"
-        >
-          <MarkerIcon>
-            {t.status === 'running' ? (
-              <Spinner className="text-primary" />
-            ) : t.status === 'error' ? (
-              <TriangleAlertIcon className="text-destructive" />
+
+  const completed = calls.filter((call) => call.status !== "running").length;
+  const toolTask = calls.length > 0 && (
+    <Task defaultOpen>
+      <TaskTrigger title={`Tools · ${completed}/${calls.length}`} />
+      <TaskContent>
+        {calls.map((call) => (
+          <TaskItem
+            key={call.id}
+            role={call.status === "running" ? "status" : undefined}
+            className="flex items-start gap-2"
+          >
+            {call.status === "running" ? (
+              <Spinner className="mt-0.5 shrink-0 text-primary" />
+            ) : call.status === "error" ? (
+              <TriangleAlertIcon className="mt-0.5 size-4 shrink-0 text-destructive" />
             ) : (
-              <CheckIcon />
+              <CheckIcon className="mt-0.5 size-4 shrink-0" />
             )}
-          </MarkerIcon>
-          <MarkerContent>
-            <span className={t.status === 'running' ? 'text-foreground' : undefined}>{t.name}</span>
-            <Summary summary={t.summary} />
-            {t.error && <span className="text-destructive"> · {t.error}</span>}
-          </MarkerContent>
-        </Marker>
-      ))}
-    </>
+            <span>
+              <span
+                className={
+                  call.status === "running" ? "text-foreground" : undefined
+                }
+              >
+                {call.name}
+              </span>
+              <Summary summary={call.summary} />
+              {call.error && (
+                <span className="text-destructive"> · {call.error}</span>
+              )}
+            </span>
+          </TaskItem>
+        ))}
+      </TaskContent>
+    </Task>
+  );
+
+  if (reasoning.length === 0) return <>{toolTask}</>;
+
+  return (
+    <ChainOfThought defaultOpen>
+      <ChainOfThoughtHeader>
+        {calls.length > 0 ? "Reasoning and tools" : "Reasoning"}
+      </ChainOfThoughtHeader>
+      <ChainOfThoughtContent>
+        {reasoning.map((step, index) => (
+          <ChainOfThoughtStep
+            key={step.id}
+            label={<span className="whitespace-pre-wrap">{step.text}</span>}
+            status={index === reasoning.length - 1 ? "active" : "complete"}
+          />
+        ))}
+        {toolTask}
+      </ChainOfThoughtContent>
+    </ChainOfThought>
   );
 }
