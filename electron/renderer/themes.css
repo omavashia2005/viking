@@ -1,15 +1,14 @@
 /* Overlay themes. A theme is one block of shadcn token values; switch by
    setting data-theme on <html>. :root is the default theme (onyx). */
 
-/* onyx — black translucent glass, monochrome; the accent is pure white so
+/* onyx — black and monochrome; the accent is pure white so
    highlights read as brightness, not hue */
 :root {
-  --glass-alpha: 0.62; /* overlay glass opacity; user-tunable from the theme page */
   --background: transparent;
   --foreground: #f2f2f2;
-  --card: rgba(0, 0, 0, var(--glass-alpha));
+  --card: #000000;
   --card-foreground: #f2f2f2;
-  --popover: rgba(0, 0, 0, 0.88);
+  --popover: #000000;
   --popover-foreground: #f2f2f2;
   --primary: #ffffff;
   --primary-foreground: #000000;
@@ -28,12 +27,12 @@
   --radius: 0.5rem;
 }
 
-/* acid — the original viking look: warm cream on smoked glass, acid-green accent */
+/* acid — warm cream on black, with an acid-green accent */
 [data-theme="acid"] {
   --foreground: #f4f1ea;
-  --card: rgba(8, 8, 10, var(--glass-alpha));
+  --card: #08080a;
   --card-foreground: #f4f1ea;
-  --popover: rgba(8, 8, 10, 0.9);
+  --popover: #08080a;
   --popover-foreground: #f4f1ea;
   --primary: #d4ff00;
   --primary-foreground: #0a0a0a;

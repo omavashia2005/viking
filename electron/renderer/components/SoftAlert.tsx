@@ -2,7 +2,7 @@ import React from 'react';
 import { TriangleAlertIcon, XIcon } from 'lucide-react';
 import { Marker, MarkerContent, MarkerIcon } from './ui/marker';
 
-// Pinned bottom-right; positioning/backdrop comes from the .alert rules in styles.css.
+// Pinned bottom-right; positioning comes from the .alert rules in styles.css.
 export function SoftAlert({ message, onDismiss }: { message: string; onDismiss: () => void }): JSX.Element | null {
   if (!message) return null;
   return (

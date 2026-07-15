@@ -15,7 +15,6 @@ export const config = {
 		model: process.env.LLM_MODEL ?? 'anthropic/claude-opus-4.8',
 	},
 	theme: 'onyx', // overlay theme; see electron/renderer/themes.css for the available blocks
-	opacity: 0.62, // overlay glass opacity, 0..1
 	// Default doc lookup; user retunes by editing.
 	// ponytail: single language for v0, add detection from screenshot when one language stops being enough.
 	defaultLanguage: 'typescript',

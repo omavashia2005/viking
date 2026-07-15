@@ -40,7 +40,6 @@
    matching the old inline-<style> cascade */
 .overlay, .spot { height: 100vh; display: flex; flex-direction: column;
   background: var(--card);
-  backdrop-filter: blur(14px) saturate(140%); -webkit-backdrop-filter: blur(14px) saturate(140%);
   border: 1px solid var(--border); border-radius: 14px; overflow: hidden;
   box-shadow: 0 30px 80px rgba(0,0,0,0.5); -webkit-app-region: drag;
   contain: layout style; }
@@ -113,7 +112,6 @@
 .settings label { display: flex; flex-direction: column; gap: 5px; }
 .settings label > span { color: var(--muted-foreground); font-size: 10.5px;
   text-transform: lowercase; letter-spacing: 0.16em; }
-.settings input[type="range"] { width: 100%; accent-color: var(--primary); }
 .srow { display: flex; align-items: center; gap: 14px; margin-top: 6px; }
 .autosave { color: var(--primary); font-size: 11px; letter-spacing: 0.1em;
   text-transform: lowercase; transition: opacity 200ms ease; }
@@ -123,7 +121,6 @@
 .alert { position: fixed; right: 16px; bottom: 24px; z-index: 20;
   max-width: 340px; display: flex; align-items: flex-start; gap: 10px;
   padding: 9px 11px 9px 12px; background: var(--popover);
-  backdrop-filter: blur(14px) saturate(140%); -webkit-backdrop-filter: blur(14px) saturate(140%);
   border: 1px solid color-mix(in srgb, var(--warning) 55%, transparent); border-radius: 8px;
   box-shadow: 0 12px 30px rgba(0,0,0,0.45);
   -webkit-app-region: no-drag; pointer-events: auto;

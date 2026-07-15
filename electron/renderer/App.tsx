@@ -41,8 +41,8 @@ declare global {
       expand: () => void;
       resize: (height: number) => void; // spotlight-only prompt growth
       hide: () => void;
-      getSettings: () => Promise<{ llm: LLM; hotkeys: Hotkeys; theme: Theme; opacity: number }>;
-      saveSettings: (s: { llm?: Partial<LLM>; hotkeys?: Partial<Hotkeys>; theme?: Theme; opacity?: number }) => Promise<void>;
+      getSettings: () => Promise<{ llm: LLM; hotkeys: Hotkeys; theme: Theme }>;
+      saveSettings: (s: { llm?: Partial<LLM>; hotkeys?: Partial<Hotkeys>; theme?: Theme }) => Promise<void>;
     };
   }
 }
@@ -61,7 +61,6 @@ export default function App(): JSX.Element {
   const [toolCalls, setToolCalls] = useState<ToolCallEntry[]>([]);
   const [reasoning, setReasoning] = useState<ReasoningProgress[]>([]);
   const [theme, setTheme] = useState<Theme>('onyx');
-  const [opacity, setOpacity] = useState(0.62);
   const [saved, setSaved] = useState(false);
   const [closing, setClosing] = useState(false);
   const hideTimer = useRef<number>();
@@ -100,12 +99,10 @@ export default function App(): JSX.Element {
       setLlm(s.llm);
       setHotkeys({ ...s.hotkeys, home: s.hotkeys.home ?? 'CommandOrControl+Shift+I' });
       if (THEMES.includes(s.theme)) setTheme(s.theme);
-      if (typeof s.opacity === 'number') setOpacity(s.opacity);
     });
   }, []);
 
   useEffect(() => { document.documentElement.dataset.theme = theme; }, [theme]);
-  useEffect(() => { document.documentElement.style.setProperty('--glass-alpha', String(opacity)); }, [opacity]);
 
   useEffect(() => { window.viking.setActive(active); }, [active]);
 
@@ -135,11 +132,11 @@ export default function App(): JSX.Element {
     if (!settingsReady.current) return;
     let cancelled = false;
     const t = setTimeout(async () => {
-      await window.viking.saveSettings({ llm, hotkeys, theme, opacity });
+      await window.viking.saveSettings({ llm, hotkeys, theme });
       if (!cancelled) { setSaved(true); setTimeout(() => setSaved(false), 1200); }
     }, 250);
     return () => { cancelled = true; clearTimeout(t); };
-  }, [llm, hotkeys, theme, opacity]);
+  }, [llm, hotkeys, theme]);
 
   useEffect(() => {
     const onKey = async (e: KeyboardEvent) => {
@@ -160,7 +157,6 @@ export default function App(): JSX.Element {
         const s = await window.viking.getSettings();
         setLlm(s.llm); setHotkeys({ ...s.hotkeys, home: s.hotkeys.home ?? 'CommandOrControl+Shift+I' });
         if (THEMES.includes(s.theme)) setTheme(s.theme);
-        if (typeof s.opacity === 'number') setOpacity(s.opacity);
         setSaved(false);
         setVikingState(pane);
         window.viking.expand();
@@ -241,7 +237,7 @@ export default function App(): JSX.Element {
 
       {vikingState === 'theme' && (
         <SettingsPanel saved={saved} hint={`${hotkeys.close} to close · ⌘S provider · ${hotkeys.settings} keymaps · ${hotkeys.home} main`} fields={[]}>
-          <ThemePicker theme={theme} onChange={setTheme} opacity={opacity} onOpacity={setOpacity} />
+          <ThemePicker theme={theme} onChange={setTheme} />
         </SettingsPanel>
       )}
 
