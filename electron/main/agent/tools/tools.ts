@@ -19,8 +19,9 @@ import {
 
 type ToolArguments = Record<string, unknown>;
 type McpServerSpec = { command: string; args: string[] };
+type McpServer = 'fff' | 'context7';
 type McpToolContent = { type: string; text?: string };
-type ToolContext = { fff: Client; cwd: string };
+type ToolContext = { cwd: string };
 type RegisteredTool = {
 	name: string;
 	description: string;
@@ -28,6 +29,9 @@ type RegisteredTool = {
 	run(args: ToolArguments, context: ToolContext): string | Promise<string>;
 };
 type BuiltTool = Tool<ToolArguments, string>;
+
+export type McpConnectionPool = Map<string, Promise<Client>>;
+export const mcpConnectionPool: McpConnectionPool = new Map();
 
 const registeredTools = new Map<string, RegisteredTool>();
 
@@ -37,9 +41,64 @@ async function callTool(client: Client, tool: string, args: ToolArguments): Prom
 	return content.filter(c => c.type === 'text').map(c => c.text ?? '').join('\n');
 }
 
-async function mcpCall(spec: McpServerSpec, tool: string, args: ToolArguments): Promise<string> {
-	const client = await openMcp(spec);
-	try { return await callTool(client, tool, args); } finally { await client.close(); }
+function connectionKey(server: McpServer, cwd: string): string {
+	return server === 'fff' ? `fff:${path.resolve(cwd)}` : server;
+}
+
+async function openMcp(spec: McpServerSpec, warmupMs = 0): Promise<Client> {
+	const client = new Client({ name: 'viking', version: '0.1.0' });
+	try {
+		await client.connect(new StdioClientTransport({ command: spec.command, args: spec.args }));
+		if (warmupMs) await new Promise(resolve => setTimeout(resolve, warmupMs));
+		return client;
+	} catch (error) {
+		await client.close().catch(() => undefined);
+		throw error;
+	}
+}
+
+function getMcpConnection(server: McpServer, cwd: string): Promise<Client> {
+	const key = connectionKey(server, cwd);
+	const existing = mcpConnectionPool.get(key);
+	if (existing) return existing;
+
+	const spec = server === 'fff'
+		? { command: config.mcp.fff.command, args: [path.resolve(cwd)] }
+		: config.mcp.context7;
+	// ponytail: one fff process per opened repo; add LRU eviction if long-running multi-repo use matters.
+	const connection = openMcp(spec, server === 'fff' ? 250 : 0);
+	mcpConnectionPool.set(key, connection);
+	void connection.catch(() => {
+		if (mcpConnectionPool.get(key) === connection) mcpConnectionPool.delete(key);
+	});
+	return connection;
+}
+
+async function callMcp(server: McpServer, cwd: string, tool: string, args: ToolArguments): Promise<string> {
+	const key = connectionKey(server, cwd);
+	const connection = getMcpConnection(server, cwd);
+	try {
+		return await callTool(await connection, tool, args);
+	} catch (error) {
+		if (mcpConnectionPool.get(key) === connection) mcpConnectionPool.delete(key);
+		const client = await connection.catch(() => undefined);
+		await client?.close().catch(() => undefined);
+		throw error;
+	}
+}
+
+export async function warmMcpConnections(cwd: string): Promise<void> {
+	await Promise.all([
+		getMcpConnection('fff', cwd),
+		getMcpConnection('context7', cwd),
+	]);
+}
+
+export async function closeMcpConnections(): Promise<void> {
+	const connections = [...mcpConnectionPool.values()];
+	mcpConnectionPool.clear();
+	const settled = await Promise.allSettled(connections);
+	await Promise.all(settled.flatMap(result => result.status === 'fulfilled' ? [result.value.close().catch(() => undefined)] : []));
 }
 
 function findRepoRoot(cwd: string): string | undefined {
@@ -94,33 +153,27 @@ export function toolSummary(name: string, args: ToolArguments, result?: string):
 	return { type: 'raw', args, preview: preview(result) };
 }
 
-export async function openMcp(spec: McpServerSpec): Promise<Client> {
-	const client = new Client({ name: 'viking', version: '0.1.0' });
-	await client.connect(new StdioClientTransport({ command: spec.command, args: spec.args }));
-	return client;
-}
-
 export function registerTool(tool: RegisteredTool): RegisteredTool {
 	registeredTools.set(tool.name, tool);
 	return tool;
 }
 
-export function buildTools(fff: Client, cwd: string): Record<string, BuiltTool> {
+export function buildTools(cwd: string): Record<string, BuiltTool> {
 	return Object.fromEntries([...registeredTools.values()].map(({ name, description, inputSchema }) => [name, tool({
 		description,
 		inputSchema,
-		execute: args => runTool(name, args, fff, cwd),
+		execute: args => runTool(name, args, cwd),
 	})]));
 }
 
-function runGrepCodebase(args: ToolArguments, context: ToolContext): Promise<string> {
+async function runGrepCodebase(args: ToolArguments, context: ToolContext): Promise<string> {
 	const { query }: QueryArguments = QueryArgs.parse(args);
-	return callTool(context.fff, 'grep', { query });
+	return callMcp('fff', context.cwd, 'grep', { query });
 }
 
-function runFindFiles(args: ToolArguments, context: ToolContext): Promise<string> {
+async function runFindFiles(args: ToolArguments, context: ToolContext): Promise<string> {
 	const { query }: QueryArguments = QueryArgs.parse(args);
-	return callTool(context.fff, 'find_files', { query });
+	return callMcp('fff', context.cwd, 'find_files', { query });
 }
 
 function runReadFile(args: ToolArguments, context: ToolContext): string {
@@ -128,14 +181,14 @@ function runReadFile(args: ToolArguments, context: ToolContext): string {
 	return readFileTool(context.cwd, fileArgs);
 }
 
-function runResolveLibraryId(args: ToolArguments): Promise<string> {
+async function runResolveLibraryId(args: ToolArguments, context: ToolContext): Promise<string> {
 	const { libraryName }: ResolveLibraryArguments = ResolveLibraryArgs.parse(args);
-	return mcpCall(config.mcp.context7, 'resolve-library-id', { libraryName });
+	return callMcp('context7', context.cwd, 'resolve-library-id', { libraryName });
 }
 
-function runGetLibraryDocs(args: ToolArguments): Promise<string> {
+async function runGetLibraryDocs(args: ToolArguments, context: ToolContext): Promise<string> {
 	const { libraryId, topic }: GetLibraryDocsArguments = GetLibraryDocsArgs.parse(args);
-	return mcpCall(config.mcp.context7, 'get-library-docs', {
+	return callMcp('context7', context.cwd, 'get-library-docs', {
 		context7CompatibleLibraryID: libraryId, topic, tokens: 2000,
 	});
 }
@@ -175,8 +228,8 @@ registerTool({
 	run: runGetLibraryDocs,
 });
 
-export async function runTool(name: string, args: ToolArguments, fff: Client, cwd: string): Promise<string> {
+export async function runTool(name: string, args: ToolArguments, cwd: string): Promise<string> {
 	const registered = registeredTools.get(name);
 	if (!registered) throw new Error(`unknown tool: ${name}`);
-	return registered.run(args, { fff, cwd });
+	return registered.run(args, { cwd });
 }

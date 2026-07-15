@@ -3,7 +3,7 @@ import { createGateway, generateText, isLoopFinished, NoObjectGeneratedError, Ou
 import { config } from './config';
 import { LLMResponse, type Option, type ReasoningProgress } from './shared-types';
 import { prompts, type Context } from './prompts';
-import { buildTools, openMcp, toolSummary } from './tools/tools';
+import { buildTools, toolSummary } from './tools/tools';
 import { ToolOutput, type ToolProgress } from './tools/shared-types';
 
 export type LaunchArgs = { cwd?: string; activeFile?: string };
@@ -46,16 +46,13 @@ export async function generate(input: userInput): Promise<LLMResult> {
 	if (screenshot) userContent.push({ type: 'file', mediaType: 'image/jpeg', data: screenshot });
 	console.log('[viking:llm] query', { model: config.llm.model, cwd, activeFile: launch?.activeFile, hasScreenshot: !!screenshot, prompt: prompts.user(ctx) });
 
-	// One persistent fff-mcp for the whole call — first spawn scans async (~50ms), reused calls hit the warm index.
-	const fff = await openMcp({ command: config.mcp.fff.command, args: [cwd] });
-	await new Promise(r => setTimeout(r, 250)); // ponytail: let fff finish its initial scan; drop when fff signals "ready".
 	let reasoningStep = 0;
 	try {
 		const result = await generateText({
 			model,
 			instructions: prompts.system,
 			messages: [{ role: 'user', content: userContent }],
-			tools: buildTools(fff, cwd),
+			tools: buildTools(cwd),
 			output: Output.object({ name: 'options', schema: LLMResponse }),
 			stopWhen: isLoopFinished(),
 			onToolExecutionStart: ({ toolCall }) => {
@@ -89,8 +86,7 @@ export async function generate(input: userInput): Promise<LLMResult> {
 			const cause = e.cause instanceof Error ? e.cause.message : e.message;
 			return { options: [], softError: `schema validation failed: ${cause}` };
 		}
+		console.log(e);
 		throw e;
-	} finally {
-		await fff.close();
 	}
 }

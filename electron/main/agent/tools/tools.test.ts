@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { resolveReadPath } from './tools';
+import { mcpConnectionPool, resolveReadPath, warmMcpConnections } from './tools';
 
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'viking-read-file-'));
 try {
@@ -18,3 +18,14 @@ try {
 } finally {
 	fs.rmSync(root, { recursive: true, force: true });
 }
+
+const fff = Promise.resolve(null as never);
+const context7 = Promise.resolve(null as never);
+mcpConnectionPool.set(`fff:${path.resolve(root)}`, fff);
+mcpConnectionPool.set('context7', context7);
+
+void warmMcpConnections(root).then(() => {
+	assert.equal(mcpConnectionPool.get(`fff:${path.resolve(root)}`), fff);
+	assert.equal(mcpConnectionPool.get('context7'), context7);
+	mcpConnectionPool.clear();
+});

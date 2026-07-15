@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import { config } from './agent/config';
 import { generate, type LaunchArgs } from './agent/llm';
 import type { Option, ReasoningProgress } from './agent/shared-types';
+import { closeMcpConnections, warmMcpConnections } from './agent/tools/tools';
 import type { ToolProgress } from './agent/tools/shared-types';
 
 // Caller passes the payload after '--args'. Chromium/Electron may inject its
@@ -19,12 +20,21 @@ function parseLaunchArgs(argv: string[]): LaunchArgs {
 let currentLaunch: LaunchArgs = parseLaunchArgs(process.argv);
 console.log('[viking] launch args:', currentLaunch);
 
+function warmLaunchConnections(launch: LaunchArgs): void {
+	const cwd = launch.cwd || config.cwd;
+	void warmMcpConnections(cwd)
+		.then(() => console.log('[viking] MCP connections ready:', cwd))
+		.catch(error => console.error('[viking] MCP connection failed:', error));
+}
+
 if (!app.requestSingleInstanceLock()) {
 	app.quit();
 } else {
+	warmLaunchConnections(currentLaunch);
 	app.on('second-instance', (_e, argv) => {
 		currentLaunch = parseLaunchArgs(argv);
 		console.log('[viking] launch args:', currentLaunch);
+		warmLaunchConnections(currentLaunch);
 		if (currentLaunch.cwd) show('textbox');
 	});
 }
@@ -225,5 +235,8 @@ app.whenReady().then(() => {
 	});
 });
 
-app.on('will-quit', () => globalShortcut.unregisterAll());
+app.on('will-quit', () => {
+	globalShortcut.unregisterAll();
+	void closeMcpConnections();
+});
 app.on('window-all-closed', () => { /* overlay: stay alive */ });
