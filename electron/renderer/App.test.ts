@@ -14,3 +14,4 @@ assert.equal(matchesShortcut(key('k', { metaKey: true }), 'CommandOrControl+K'),
 assert.equal(matchesShortcut(key('k', { metaKey: true }), 'CommandOrControl+Shift+K'), false);
 assert.equal(matchesShortcut(key(' ', { altKey: true }), 'Alt+Space'), true);
 assert.equal(matchesShortcut(key('y', { ctrlKey: true }), 'y', true), true);
+assert.equal(matchesShortcut(key('i', { metaKey: true, shiftKey: true }), 'CommandOrControl+Shift+I'), true);

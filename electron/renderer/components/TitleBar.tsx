@@ -1,10 +1,10 @@
 import React from 'react';
 import type { Option } from '@/shared-types';
 import { TabsList, TabsTrigger } from './ui/tabs';
-import type { Phase } from './types';
+import type { Phase, VikingState } from './types';
 
 export function TitleBar({ phase, options }: {
-  phase: Phase;
+  phase: Phase | Exclude<VikingState, 'main'>;
   options: Option[];
 }): JSX.Element {
   return (

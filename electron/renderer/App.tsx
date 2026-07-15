@@ -9,7 +9,7 @@ import { Spotlight } from './components/Spotlight';
 import { TitleBar } from './components/TitleBar';
 import { ToolCallLog, type ToolCallEntry } from './components/ToolCallLog';
 import { ThemePicker } from './components/ThemePicker';
-import { THEMES, type Hotkeys, type LLM, type Phase, type Theme } from './components/types';
+import { THEMES, type Hotkeys, type LLM, type Phase, type Theme, type VikingState } from './components/types';
 import { Tabs, TabsContent } from './components/ui/tabs';
 
 function mergeToolCall(prev: ToolCallEntry[], event: ToolProgress): ToolCallEntry[] {
@@ -20,7 +20,8 @@ function mergeToolCall(prev: ToolCallEntry[], event: ToolProgress): ToolCallEntr
   return next;
 }
 
-export function matchesShortcut(e: KeyboardEvent, shortcut: string, implicitMod = false): boolean {
+export function matchesShortcut(e: KeyboardEvent, shortcut: string | undefined, implicitMod = false): boolean {
+  if (!shortcut) return false;
   const parts = shortcut.toLowerCase().split('+');
   const key = parts.pop();
   const has = (part: string) => parts.includes(part);
@@ -48,6 +49,7 @@ declare global {
 
 export default function App(): JSX.Element {
   const [phase, setPhase] = useState<Phase>('hidden');
+  const [vikingState, setVikingState] = useState<VikingState>('main');
   const [options, setOptions] = useState<Option[]>([]);
   const [active, setActive] = useState(0);
   const [prompt, setPrompt] = useState('');
@@ -55,10 +57,10 @@ export default function App(): JSX.Element {
   const [softError, setSoftError] = useState('');
   const [refineFrom, setRefineFrom] = useState<Option | undefined>();
   const [llm, setLlm] = useState<LLM>({ apiKey: '', model: '' });
-  const [hotkeys, setHotkeys] = useState<Hotkeys>({ open: '', settings: '', close: '', copy: '' });
+  const [hotkeys, setHotkeys] = useState<Hotkeys>({ open: '', settings: '', home: 'CommandOrControl+Shift+I', close: '', copy: '' });
   const [toolCalls, setToolCalls] = useState<ToolCallEntry[]>([]);
   const [reasoning, setReasoning] = useState<ReasoningProgress[]>([]);
-  const [theme, setTheme] = useState<Theme>('glass');
+  const [theme, setTheme] = useState<Theme>('onyx');
   const [opacity, setOpacity] = useState(0.62);
   const [saved, setSaved] = useState(false);
   const [closing, setClosing] = useState(false);
@@ -77,6 +79,7 @@ export default function App(): JSX.Element {
       clearTimeout(hideTimer.current); setClosing(false); // reopened mid-close: cancel the pending hide
       setError(''); setSoftError(''); setPrompt(''); setToolCalls([]); setReasoning([]);
       setPhase('textbox');
+      setVikingState('main');
       setRefineFrom(mode === 'followup' ? refineFrom : undefined);
       setTimeout(() => inputRef.current?.focus(), 50);
     });
@@ -95,7 +98,7 @@ export default function App(): JSX.Element {
     window.viking.on('viking:reset', () => { setPhase('hidden'); setClosing(false); });
     window.viking.getSettings().then(s => {
       setLlm(s.llm);
-      setHotkeys(s.hotkeys);
+      setHotkeys({ ...s.hotkeys, home: s.hotkeys.home ?? 'CommandOrControl+Shift+I' });
       if (THEMES.includes(s.theme)) setTheme(s.theme);
       if (typeof s.opacity === 'number') setOpacity(s.opacity);
     });
@@ -109,16 +112,16 @@ export default function App(): JSX.Element {
   // Loading is a live tail: keep the newest work visible as content grows or the window resizes.
   useEffect(() => {
     const el = logRef.current;
-    if (phase === 'loading' && el) el.scrollTop = el.scrollHeight;
-  }, [phase, reasoning, toolCalls]);
+    if (vikingState === 'main' && phase === 'loading' && el) el.scrollTop = el.scrollHeight;
+  }, [phase, reasoning, toolCalls, vikingState]);
 
   useEffect(() => {
     const el = logRef.current;
-    if (phase !== 'loading' || !el) return;
+    if (vikingState !== 'main' || phase !== 'loading' || !el) return;
     const observer = new ResizeObserver(() => { el.scrollTop = el.scrollHeight; });
     observer.observe(el);
     return () => observer.disconnect();
-  }, [phase]);
+  }, [phase, vikingState]);
 
   // Auto-dismiss the soft alert after ~5s. Timer resets whenever a new softError arrives.
   useEffect(() => {
@@ -140,6 +143,7 @@ export default function App(): JSX.Element {
 
   useEffect(() => {
     const onKey = async (e: KeyboardEvent) => {
+      if (matchesShortcut(e, hotkeys.home)) { e.preventDefault(); setVikingState('main'); return; }
       if (e.defaultPrevented) return;
       const t = e.target as HTMLElement | null;
       const editable = !!t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || (t as any).isContentEditable);
@@ -154,11 +158,11 @@ export default function App(): JSX.Element {
         e.preventDefault();
         settingsReady.current = false;
         const s = await window.viking.getSettings();
-        setLlm(s.llm); setHotkeys(s.hotkeys);
+        setLlm(s.llm); setHotkeys({ ...s.hotkeys, home: s.hotkeys.home ?? 'CommandOrControl+Shift+I' });
         if (THEMES.includes(s.theme)) setTheme(s.theme);
         if (typeof s.opacity === 'number') setOpacity(s.opacity);
         setSaved(false);
-        setPhase(pane);
+        setVikingState(pane);
         window.viking.expand();
         // mark ready after the populated state has flushed, so the autosave effect skips the load.
         setTimeout(() => { settingsReady.current = true; }, 0);
@@ -175,8 +179,8 @@ export default function App(): JSX.Element {
         await navigator.clipboard.writeText(options[active].code);
       }
     };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
   }, [options, active, hotkeys]);
 
   // Spotlight-style dismiss: let overlay-out (140ms) finish before the window hides.
@@ -190,7 +194,7 @@ export default function App(): JSX.Element {
   const alertEl = <SoftAlert message={softError} onDismiss={() => setSoftError('')} />;
 
   // Spotlight layout for textbox / follow-up phase
-  if (phase === 'textbox') {
+  if (vikingState === 'main' && phase === 'textbox') {
     return (
       <Spotlight
         prompt={prompt}
@@ -207,26 +211,26 @@ export default function App(): JSX.Element {
 
   return (
     <Tabs value={String(active)} onValueChange={value => setActive(Number(value))} className={closing ? 'overlay gap-0 closing' : 'overlay gap-0'}>
-      <TitleBar phase={phase} options={options} />
+      <TitleBar phase={vikingState === 'main' ? phase : vikingState} options={options} />
 
       {phase === 'loading' && (
-        <div className="toollog" ref={logRef}>
+        <div className={vikingState === 'main' ? 'toollog' : 'toollog hidden'} ref={logRef}>
           <ToolCallLog calls={toolCalls} reasoning={reasoning} />
         </div>
       )}
 
       {phase === 'results' && options.map((option, i) => (
-        <TabsContent key={i} value={String(i)} className="flex min-h-0">
+        <TabsContent key={i} value={String(i)} className={vikingState === 'main' ? 'flex min-h-0' : 'hidden'}>
           <CodeView option={option} />
         </TabsContent>
       ))}
 
-      {phase === 'error' && <ErrorView message={error} />}
+      {vikingState === 'main' && phase === 'error' && <ErrorView message={error} />}
 
-      {phase === 'provider' && (
+      {vikingState === 'provider' && (
         <SettingsPanel
           saved={saved}
-          hint={`${hotkeys.close} to close · ${hotkeys.settings} keymaps · ⌘T theme`}
+          hint={`${hotkeys.close} to close · ${hotkeys.settings} keymaps · ⌘T theme · ${hotkeys.home} main`}
           fields={[
             { label: 'AI Gateway API key', value: llm.apiKey, onChange: v => setLlm({ ...llm, apiKey: v }), placeholder: 'AI_GATEWAY_API_KEY', type: 'password' },
           ]}
@@ -235,19 +239,20 @@ export default function App(): JSX.Element {
         </SettingsPanel>
       )}
 
-      {phase === 'theme' && (
-        <SettingsPanel saved={saved} hint={`${hotkeys.close} to close · ⌘S provider · ${hotkeys.settings} keymaps`} fields={[]}>
+      {vikingState === 'theme' && (
+        <SettingsPanel saved={saved} hint={`${hotkeys.close} to close · ⌘S provider · ${hotkeys.settings} keymaps · ${hotkeys.home} main`} fields={[]}>
           <ThemePicker theme={theme} onChange={setTheme} opacity={opacity} onOpacity={setOpacity} />
         </SettingsPanel>
       )}
 
-      {phase === 'keymaps' && (
+      {vikingState === 'keymaps' && (
         <SettingsPanel
           saved={saved}
-          hint={`${hotkeys.close} to close · ⌘S provider · ⌘T theme`}
+          hint={`${hotkeys.close} to close · ⌘S provider · ⌘T theme · ${hotkeys.home} main`}
           fields={[
-            { label: 'open prompt (global)', value: hotkeys.open, onChange: v => setHotkeys({ ...hotkeys, open: v }), options: ['CommandOrControl+I', 'CommandOrControl+Shift+I', 'Alt+I'], autoFocus: true },
+            { label: 'open prompt (global)', value: hotkeys.open, onChange: v => setHotkeys({ ...hotkeys, open: v }), options: ['CommandOrControl+I', 'CommandOrControl+Space', 'Alt+I'], autoFocus: true },
             { label: 'open settings (window)', value: hotkeys.settings, onChange: v => setHotkeys({ ...hotkeys, settings: v }), options: ['CommandOrControl+K', 'CommandOrControl+,', 'CommandOrControl+Shift+K'] },
+            { label: 'return home (window)', value: hotkeys.home, onChange: v => setHotkeys({ ...hotkeys, home: v }), options: ['CommandOrControl+Shift+I', 'CommandOrControl+Shift+V', 'Alt+Shift+I'] },
             { label: 'close key (window, ignored while typing)', value: hotkeys.close, onChange: v => setHotkeys({ ...hotkeys, close: v }), options: ['q', 'Escape'] },
             { label: 'copy active (⌘/Ctrl + …)', value: hotkeys.copy, onChange: v => setHotkeys({ ...hotkeys, copy: v }), options: ['c', 'y', 'p'] },
           ]}
