@@ -1,16 +1,19 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { tool, type FlexibleSchema, type Tool } from 'ai';
 
 import fs from 'node:fs';
 import path from 'node:path';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { config } from '../config';
 import {
-	LibraryArgs,
+	GetLibraryDocsArgs,
 	QueryArgs,
 	ReadFileArgs,
-	type LibraryArgs as LibraryArguments,
+	ResolveLibraryArgs,
+	type GetLibraryDocsArgs as GetLibraryDocsArguments,
 	type QueryArgs as QueryArguments,
 	type ReadFileArgs as ReadFileArguments,
+	type ResolveLibraryArgs as ResolveLibraryArguments,
 	type ToolSummary,
 } from './shared-types';
 
@@ -18,31 +21,13 @@ type ToolArguments = Record<string, unknown>;
 type McpServerSpec = { command: string; args: string[] };
 type McpToolContent = { type: string; text?: string };
 type ToolContext = { fff: Client; cwd: string };
-type ToolParameters = {
-	type: string;
-	properties?: Record<string, ToolParameters>;
-	required?: string[];
-	description?: string;
-	[key: string]: unknown;
-};
-enum ToolTypes {
-	Function = 'function',
-}
-type Tools = {
-	type: ToolTypes.Function;
-	function: {
-		name: string;
-		description: string;
-		parameters: ToolParameters;
-	};
-};
 type RegisteredTool = {
-	type: ToolTypes.Function;
 	name: string;
 	description: string;
-	parameters: ToolParameters;
+	inputSchema: FlexibleSchema<ToolArguments>;
 	run(args: ToolArguments, context: ToolContext): string | Promise<string>;
 };
+type BuiltTool = Tool<ToolArguments, string>;
 
 const registeredTools = new Map<string, RegisteredTool>();
 
@@ -103,7 +88,7 @@ export function toolSummary(name: string, args: ToolArguments, result?: string):
 		return parsed.success ? { type: 'read_file', ...parsed.data } : { type: 'raw', args, preview: preview(result) };
 	}
 	if (name === 'resolve_library_id' || name === 'get_library_docs') {
-		const parsed = LibraryArgs.safeParse(args);
+		const parsed = name === 'resolve_library_id' ? ResolveLibraryArgs.safeParse(args) : GetLibraryDocsArgs.safeParse(args);
 		return parsed.success ? { type: 'library', ...parsed.data, preview: preview(result) } : { type: 'raw', args, preview: preview(result) };
 	}
 	return { type: 'raw', args, preview: preview(result) };
@@ -120,11 +105,12 @@ export function registerTool(tool: RegisteredTool): RegisteredTool {
 	return tool;
 }
 
-export function buildTools(): Tools[] {
-	return [...registeredTools.values()].map(({ type, name, description, parameters }) => ({
-		type,
-		function: { name, description, parameters },
-	}));
+export function buildTools(fff: Client, cwd: string): Record<string, BuiltTool> {
+	return Object.fromEntries([...registeredTools.values()].map(({ name, description, inputSchema }) => [name, tool({
+		description,
+		inputSchema,
+		execute: args => runTool(name, args, fff, cwd),
+	})]));
 }
 
 function runGrepCodebase(args: ToolArguments, context: ToolContext): Promise<string> {
@@ -143,87 +129,54 @@ function runReadFile(args: ToolArguments, context: ToolContext): string {
 }
 
 function runResolveLibraryId(args: ToolArguments): Promise<string> {
-	const { libraryName }: LibraryArguments = LibraryArgs.parse(args);
+	const { libraryName }: ResolveLibraryArguments = ResolveLibraryArgs.parse(args);
 	return mcpCall(config.mcp.context7, 'resolve-library-id', { libraryName });
 }
 
 function runGetLibraryDocs(args: ToolArguments): Promise<string> {
-	const { libraryId, topic }: LibraryArguments = LibraryArgs.parse(args);
+	const { libraryId, topic }: GetLibraryDocsArguments = GetLibraryDocsArgs.parse(args);
 	return mcpCall(config.mcp.context7, 'get-library-docs', {
 		context7CompatibleLibraryID: libraryId, topic, tokens: 2000,
 	});
 }
 
 registerTool({
-	type: ToolTypes.Function,
 	name: 'grep_codebase',
 	description: "Search the user's codebase file contents. Query is a BARE identifier or literal substring — no regex. Prepend a constraint for scope: '*.ts query', 'src/ query', '!test/ query'.",
-	parameters: {
-		type: 'object',
-		properties: { query: { type: 'string' } },
-		required: ['query'],
-	},
+	inputSchema: QueryArgs,
 	run: runGrepCodebase,
 });
 
 registerTool({
-	type: ToolTypes.Function,
 	name: 'find_files',
 	description: "Fuzzy file-name search in the user's codebase. Keep query to 1-2 short terms; supports glob constraints e.g. 'name **/src/*.{ts,tsx}'.",
-	parameters: {
-		type: 'object',
-		properties: { query: { type: 'string' } },
-		required: ['query'],
-	},
+	inputSchema: QueryArgs,
 	run: runFindFiles,
 });
 
 registerTool({
-	type: ToolTypes.Function,
 	name: 'read_file',
 	description: "Read a file from the user's codebase. Prefer this after grep_codebase points to a definition. Returns the requested line range (defaults to whole file, capped at 400 lines).",
-	parameters: {
-		type: 'object',
-		properties: {
-			path: { type: 'string', description: 'Absolute or repo-relative path.' },
-			startLine: { type: 'number' },
-			endLine: { type: 'number' },
-		},
-		required: ['path'],
-	},
+	inputSchema: ReadFileArgs,
 	run: runReadFile,
 });
 
 registerTool({
-	type: ToolTypes.Function,
 	name: 'resolve_library_id',
 	description: "REQUIRED before get_library_docs. Resolve a plain library name (e.g. 'react', 'zod') to the context7 library id.",
-	parameters: {
-		type: 'object',
-		properties: { libraryName: { type: 'string' } },
-		required: ['libraryName'],
-	},
+	inputSchema: ResolveLibraryArgs,
 	run: runResolveLibraryId,
 });
 
 registerTool({
-	type: ToolTypes.Function,
 	name: 'get_library_docs',
 	description: "Fetch docs for a topic. libraryId MUST be from resolve_library_id (format '/org/lib' or '/org/lib/version'). Never pass a bare name.",
-	parameters: {
-		type: 'object',
-		properties: {
-			libraryId: { type: 'string' },
-			topic: { type: 'string' },
-		},
-		required: ['libraryId', 'topic'],
-	},
+	inputSchema: GetLibraryDocsArgs,
 	run: runGetLibraryDocs,
 });
 
 export async function runTool(name: string, args: ToolArguments, fff: Client, cwd: string): Promise<string> {
-	try {
-		const tool = registeredTools.get(name);
-		return tool ? await tool.run(args, { fff, cwd }) : `unknown tool: ${name}`;
-	} catch (e) { return `error: ${(e as Error).message}`; }
+	const registered = registeredTools.get(name);
+	if (!registered) throw new Error(`unknown tool: ${name}`);
+	return registered.run(args, { fff, cwd });
 }

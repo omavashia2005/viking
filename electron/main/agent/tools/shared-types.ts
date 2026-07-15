@@ -10,8 +10,11 @@ export const ReadFileArgs = z.object({
 }).passthrough();
 export type ReadFileArgs = z.infer<typeof ReadFileArgs>;
 
-export const LibraryArgs = z.object({ libraryName: z.string().optional(), libraryId: z.string().optional(), topic: z.string().optional() }).passthrough();
-export type LibraryArgs = z.infer<typeof LibraryArgs>;
+export const ResolveLibraryArgs = z.object({ libraryName: z.string() });
+export type ResolveLibraryArgs = z.infer<typeof ResolveLibraryArgs>;
+
+export const GetLibraryDocsArgs = z.object({ libraryId: z.string(), topic: z.string() });
+export type GetLibraryDocsArgs = z.infer<typeof GetLibraryDocsArgs>;
 
 export const ToolSummary = z.discriminatedUnion('type', [
 	z.object({

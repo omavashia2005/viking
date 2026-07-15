@@ -176,7 +176,7 @@ async function run(prompt: string | undefined, refineFrom?: Option): Promise<voi
 	win?.webContents.send('viking:loading');
 	const screenshot = await captureScreen();
 	try {
-		const { options, softError } = await generate({
+		const { options, reasoning, softError } = await generate({
 			userPrompt: buildPrompt(prompt, refineFrom) ?? '',
 			screenshot: screenshot ?? '',
 			launch: currentLaunch,
@@ -184,7 +184,7 @@ async function run(prompt: string | undefined, refineFrom?: Option): Promise<voi
 		});
 		lastOptions = options;
 		activeIdx = 0;
-		win?.webContents.send('viking:result', { options, softError });
+		win?.webContents.send('viking:result', { options, reasoning, softError });
 	} catch (e) {
 		win?.webContents.send('viking:result', { options: [], error: friendly(e as Error) });
 	}
