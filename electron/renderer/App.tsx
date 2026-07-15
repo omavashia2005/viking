@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import hljs from 'highlight.js/lib/common';
 import type { Option, ToolProgress } from '@/shared-types';
 import { CodeView } from './components/CodeView';
@@ -54,7 +54,7 @@ export default function App(): JSX.Element {
   const logRef = useRef<HTMLDivElement>(null);
   const stickToBottom = useRef(true);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!window.viking) {
       console.error('[viking] preload bridge missing — window.viking is undefined. Check preload path / contextIsolation.');
       return;
@@ -69,6 +69,7 @@ export default function App(): JSX.Element {
     window.viking.on('viking:loading', () => { setSoftError(''); setToolCalls([]); stickToBottom.current = true; setPhase('loading'); });
     window.viking.on('viking:tool', (event: ToolProgress) => setToolCalls(prev => mergeToolCall(prev, event)));
     window.viking.on('viking:result', (p: { options: Option[]; error?: string; softError?: string }) => {
+      setToolCalls([]);
       if (p.error) { setError(p.error); setPhase('error'); return; }
       if (p.softError) {
         setSoftError(p.softError);
@@ -200,12 +201,6 @@ export default function App(): JSX.Element {
             stickToBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 24;
           }}
         >
-          <ToolCallLog calls={toolCalls} />
-        </div>
-      )}
-
-      {phase === 'results' && toolCalls.length > 0 && (
-        <div className="toollog compact">
           <ToolCallLog calls={toolCalls} />
         </div>
       )}

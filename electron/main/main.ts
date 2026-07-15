@@ -53,6 +53,8 @@ let win: BrowserWindow | null = null;
 let lastOptions: Option[] = [];
 let activeIdx = 0;
 let mode: 'spotlight' | 'full' = 'full';
+let rendererReady = false;
+let pendingShow: { mode: 'textbox' | 'followup'; refineFrom?: Option } | null = null;
 
 const SIZES = {
   spotlight: { w: 600, h: 64, y: 80 },
@@ -81,6 +83,7 @@ function setMode(next: 'spotlight' | 'full'): void {
 }
 
 function createWindow(): BrowserWindow {
+  rendererReady = false;
   const { width } = screen.getPrimaryDisplay().workAreaSize;
   const { w, h, y } = SIZES.full;
   const w0 = new BrowserWindow({
@@ -94,6 +97,14 @@ function createWindow(): BrowserWindow {
   });
   w0.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
   w0.setAlwaysOnTop(true, 'screen-saver');
+  w0.once('ready-to-show', () => {
+    rendererReady = true;
+    if (pendingShow) {
+      const pending = pendingShow;
+      pendingShow = null;
+      show(pending.mode, pending.refineFrom);
+    }
+  });
   w0.on('resized', () => {
     if (mode !== 'full') return;
     const b = w0.getBounds();
@@ -104,6 +115,7 @@ function createWindow(): BrowserWindow {
   w0.webContents.on('render-process-gone', (_e, d) => console.error('[viking] renderer gone:', d));
   w0.webContents.on('preload-error', (_e, p, err) => console.error('[viking] preload error:', p, err));
   w0.webContents.on('did-fail-load', (_e, code, desc) => console.error('[viking] load failed:', code, desc));
+   console.log("this was here");
   return w0;
 }
 
@@ -119,6 +131,10 @@ async function captureScreen(): Promise<string | undefined> {
 
 function show(mode: 'textbox' | 'followup', refineFrom?: Option): void {
   if (!win) win = createWindow();
+  if (!rendererReady) {
+    pendingShow = { mode, refineFrom };
+    return;
+  }
   setMode('spotlight');
   win.show();
   app.focus({ steal: true }); // macOS: bring our app forward so the textarea gets keyboard input
@@ -160,12 +176,12 @@ async function run(prompt: string | undefined, refineFrom?: Option): Promise<voi
   win?.webContents.send('viking:loading');
   const screenshot = await captureScreen();
   try {
-    const { options, softError } = await generate(
-      buildPrompt(prompt, refineFrom),
-      screenshot,
-      currentLaunch,
-      (event: ToolProgress) => win?.webContents.send('viking:tool', event),
-    );
+    const { options, softError } = await generate({
+      userPrompt: buildPrompt(prompt, refineFrom) ?? '',
+      screenshot: screenshot ?? '',
+      launch: currentLaunch,
+      onTool: (event: ToolProgress) => win?.webContents.send('viking:tool', event),
+    });
     lastOptions = options;
     activeIdx = 0;
     win?.webContents.send('viking:result', { options, softError });

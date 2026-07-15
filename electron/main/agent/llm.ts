@@ -13,7 +13,13 @@ const MAX_SCHEMA_RETRIES = 3;
 export type LaunchArgs = { cwd?: string; activeFile?: string };
 type SeedContextResult = { cwd: string; activeFileSnippet: string };
 type GenerateToolProgressCallback = (event: ToolProgress) => void;
-type GenerateResult = { options: Option[]; softError?: string };
+type LLMResult = { options: Option[]; softError?: string };
+type userInput = {
+  userPrompt: string;
+  screenshot: string;
+  launch?: LaunchArgs;
+  onTool?: GenerateToolProgressCallback;
+};
 
 export const TOOLS: OpenAI.Chat.ChatCompletionTool[] = buildTools();
 
@@ -26,12 +32,8 @@ function seedContext(launch: LaunchArgs | undefined): SeedContextResult {
   return { cwd, activeFileSnippet: snippet };
 }
 
-export async function generate(
-  userPrompt: string | undefined,
-  screenshot: string | undefined,
-  launch?: LaunchArgs,
-  onTool?: GenerateToolProgressCallback,
-): Promise<GenerateResult> {
+export async function generate(input: userInput): Promise<LLMResult> {
+  const { userPrompt, screenshot, launch, onTool } = input;
   const { cwd, activeFileSnippet } = seedContext(launch);
   const client = new OpenAI({ baseURL: config.llm.baseURL, apiKey: config.llm.apiKey });
 
@@ -59,22 +61,20 @@ export async function generate(
   let schemaRetries = 0;
   let lastSchemaErr = '';
   let rounds = 0;
-  let toolCalls = 0;
-  let toolCapNoticeSent = false;
   try {
     for (;;) {
       rounds++;
       const res = await client.chat.completions.create({
         model: config.llm.model,
         messages,
-        ...(toolCalls < config.maxToolCalls ? { tools: TOOLS, tool_choice: toolCalls === 0 ? 'required' : 'auto' } : {}),
+        tools: TOOLS,
         response_format: zodResponseFormat(LLMResponse, 'options'),
       });
       const msg = res.choices[0].message;
       messages.push(msg);
       if (!msg.tool_calls?.length) {
         try {
-          const options = LLMResponse.parse(JSON.parse(msg.content ?? '{}')).options;
+          const options = LLMResponse.parse(JSON.parse(typeof msg.content === 'string' ? msg.content : '{}')).options;
           console.log(`[viking:llm] final rounds=${rounds} options=${options.length}`);
           options.forEach((o, idx) => console.log(`  [${idx}] ${o.label} (${o.language}) → ${o.file}`));
           return { options };
@@ -90,13 +90,6 @@ export async function generate(
         continue;
       }
       for (const call of msg.tool_calls) {
-        if (toolCalls >= config.maxToolCalls) {
-          const capMsg = `Tool call skipped: reached the ${config.maxToolCalls}-tool-call cap. Return final JSON using the context already gathered.`;
-          console.log(`[viking:llm] tool r${rounds} ↷ ${call.function.name} [cap]`);
-          messages.push({ role: 'tool', tool_call_id: call.id, content: capMsg });
-          continue;
-        }
-        toolCalls++;
         let args: Record<string, any>;
         try {
           args = JSON.parse(call.function.arguments || '{}');
@@ -114,10 +107,6 @@ export async function generate(
         const failed = result.startsWith('error:');
         onTool?.({ id: call.id, name: call.function.name, status: failed ? 'error' : 'done', summary: failed ? undefined : toolSummary(call.function.name, args, result), error: failed ? result : undefined });
         messages.push({ role: 'tool', tool_call_id: call.id, content: result });
-      }
-      if (toolCalls >= config.maxToolCalls && !toolCapNoticeSent) {
-        messages.push({ role: 'user', content: `You have used the ${config.maxToolCalls} allowed tool calls. Do not call more tools. Return final JSON now using all gathered context.` });
-        toolCapNoticeSent = true;
       }
     }
   } finally {
