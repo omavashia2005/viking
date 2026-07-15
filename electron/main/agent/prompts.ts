@@ -37,7 +37,7 @@ Setting "startLine": read_file prefixes every line with "N: " and grep_codebase 
   • replacement of an existing block → the first line number of that block
   • addition after imports/hooks → the line number one past the last existing import/hook
   • addition at end of file → last line + 1
-Only omit "startLine" if you called read_file on the target and it genuinely offers no anchor (empty file, unclear insertion point). Never guess a number without reading the file first.`,
+Set "startLine" to null only if you called read_file on the target and it genuinely offers no anchor (empty file, unclear insertion point). Never guess a number without reading the file first.`,
 
 	user: ctx => {
 		const parts: string[] = [];
