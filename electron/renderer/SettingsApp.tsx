@@ -13,28 +13,20 @@ const MICRO = 'text-[10.5px] lowercase tracking-[0.16em] text-muted-foreground';
 
 const GLYPHS: Record<string, string> = {
   commandorcontrol: '⌘', command: '⌘', control: '⌃', alt: '⌥', shift: '⇧', escape: 'esc', space: 'space',
+  enter: '↩', up: '↑', down: '↓', left: '←', right: '→',
 };
 const glyph = (part: string): string =>
   GLYPHS[part.toLowerCase()] ?? (part.length === 1 ? part.toUpperCase() : part.toLowerCase());
 
-// Display-only: 'CommandOrControl+S' → [⌘][S]. implicitMod prepends ⌘ (the copy binding).
-function Keycaps({ binding, implicitMod }: { binding: string; implicitMod?: boolean }): JSX.Element | null {
-  if (!binding) return null;
-  const caps = [...(implicitMod ? ['⌘'] : []), ...binding.split('+').map(glyph)];
-  return (
-    <span className="flex shrink-0 gap-1" aria-hidden>
-      {caps.map((cap, i) => (
-        <kbd key={i} className="min-w-[20px] rounded border border-border bg-secondary px-1.5 py-1 text-center font-sans text-[10px] leading-none text-foreground">
-          {cap}
-        </kbd>
-      ))}
-    </span>
-  );
-}
+const MODS = ['CommandOrControl', 'Control', 'Alt', 'Shift'];
+const MOD_NAMES: Record<string, string> = { CommandOrControl: 'cmd/ctrl', Control: 'ctrl', Alt: 'alt', Shift: 'shift' };
+const MAIN_KEYS = [...'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', 'Space', 'Enter', 'Escape', ',', 'Up', 'Down', 'Left', 'Right'];
 
-const BINDINGS: { key: keyof Hotkeys; label: string; hint: string; options: string[]; implicitMod?: boolean }[] = [
-  { key: 'open', label: 'open prompt', hint: 'global — works anywhere', options: ['CommandOrControl+I', 'CommandOrControl+Space', 'Alt+I'] },
-  { key: 'settings', label: 'open settings', hint: 'this window', options: ['CommandOrControl+S', 'CommandOrControl+K', 'CommandOrControl+,', 'CommandOrControl+Shift+K'] },
+// open/settings are full accelerators (composable editor); close/copy stay single-key: close is a
+// bare key ignored while typing, copy is implicit-⌘ + key shown with a fixed non-interactive ⌘ cap.
+const BINDINGS: { key: keyof Hotkeys; label: string; hint: string; options?: string[]; implicitMod?: boolean }[] = [
+  { key: 'open', label: 'open prompt', hint: 'global — works anywhere' },
+  { key: 'settings', label: 'open settings', hint: 'this window' },
   { key: 'close', label: 'close overlay', hint: 'ignored while typing', options: ['q', 'Escape'] },
   { key: 'copy', label: 'copy active result', hint: '⌘/ctrl + key', options: ['c', 'y', 'p'], implicitMod: true },
   { key: 'back', label: 'back to results', hint: 'from a follow-up prompt', options: ['CommandOrControl+Shift+B', 'CommandOrControl+Shift+O', 'Alt+ArrowLeft'] },
@@ -43,6 +35,63 @@ const BINDINGS: { key: keyof Hotkeys; label: string; hint: string; options: stri
 // keep a custom binding from a hand-edited config selectable
 const withCurrent = (value: string, options: string[]): string[] =>
   value && !options.includes(value) ? [value, ...options] : options;
+
+const CAP = 'h-7 min-w-[30px] shrink-0 justify-center gap-0 rounded border-border bg-secondary px-1.5 py-0 font-mono text-[11px] [&_svg]:hidden';
+
+// One keycap-shaped dropdown: glyph in the cap, glyph (+ name for modifiers) in the menu.
+function KeySelect({ value, options, onChange, ariaLabel }: { value: string; options: string[]; onChange: (v: string) => void; ariaLabel: string }): JSX.Element {
+  return (
+    <Select value={value} onValueChange={onChange}>
+      <SelectTrigger className={CAP} aria-label={ariaLabel}>
+        <SelectValue>{glyph(value)}</SelectValue>
+      </SelectTrigger>
+      <SelectContent className="w-auto min-w-[3rem]">
+        {options.map(o => (
+          <SelectItem key={o} value={o} className="font-mono text-[11px]">
+            {glyph(o)}
+            {MOD_NAMES[o] && <span className="ml-1.5 lowercase text-muted-foreground">{MOD_NAMES[o]}</span>}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+
+// Per-key editor for an accelerator string: one dropdown per '+'-part, main key last.
+// min 2 / max 3 keys; +/− add and remove modifier slots.
+function AccelEditor({ value, label, onChange }: { value: string; label: string; onChange: (v: string) => void }): JSX.Element {
+  const parts = value.split('+');
+  const mods = parts.slice(0, -1);
+  const main = parts[parts.length - 1];
+  const free = MODS.filter(m => !mods.includes(m));
+  const swap = (i: number, v: string): void => onChange(parts.map((p, j) => (j === i ? v : p)).join('+'));
+  const stepper = 'flex h-7 w-5 shrink-0 items-center justify-center rounded text-[13px] leading-none text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring';
+  return (
+    <div className="flex shrink-0 items-center gap-1">
+      {mods.map((m, i) => (
+        <KeySelect
+          key={i}
+          value={m}
+          options={withCurrent(m, MODS.filter(x => x === m || !mods.includes(x)))}
+          onChange={v => swap(i, v)}
+          ariaLabel={`${label} modifier ${i + 1}`}
+        />
+      ))}
+      <KeySelect value={main} options={withCurrent(main, MAIN_KEYS)} onChange={v => swap(parts.length - 1, v)} ariaLabel={`${label} key`} />
+      {mods.length > 1 && (
+        // ponytail: removes the last modifier; the remaining slot is editable anyway
+        <button type="button" className={stepper} aria-label={`remove modifier from ${label}`} onClick={() => onChange([...mods.slice(0, -1), main].join('+'))}>
+          −
+        </button>
+      )}
+      {main && mods.length < 2 && free.length > 0 && (
+        <button type="button" className={stepper} aria-label={`add modifier to ${label}`} onClick={() => onChange([...mods, free[0], main].join('+'))}>
+          +
+        </button>
+      )}
+    </div>
+  );
+}
 
 function PageHead({ title, sub }: { title: string; sub: string }): JSX.Element {
   return (
@@ -219,17 +268,18 @@ export default function SettingsApp(): JSX.Element {
                       <span className="text-[11.5px] lowercase">{b.label}</span>
                       <span className="text-[10px] lowercase text-muted-foreground">{b.hint}</span>
                     </div>
-                    <Keycaps binding={hotkeys[b.key]} implicitMod={b.implicitMod} />
-                    <Select value={hotkeys[b.key]} onValueChange={v => setHotkeys({ ...hotkeys, [b.key]: v })}>
-                      <SelectTrigger className="w-52 shrink-0 lowercase" aria-label={b.label}>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {withCurrent(hotkeys[b.key], b.options).map(o => (
-                          <SelectItem key={o} value={o} className="lowercase">{o}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    {b.options ? (
+                      <div className="flex shrink-0 items-center gap-1">
+                        {b.implicitMod && (
+                          <kbd aria-hidden className="flex h-7 min-w-[30px] items-center justify-center rounded border border-border bg-secondary px-1.5 font-mono text-[11px] text-muted-foreground">
+                            ⌘
+                          </kbd>
+                        )}
+                        <KeySelect value={hotkeys[b.key]} options={withCurrent(hotkeys[b.key], b.options)} onChange={v => setHotkeys({ ...hotkeys, [b.key]: v })} ariaLabel={b.label} />
+                      </div>
+                    ) : (
+                      <AccelEditor value={hotkeys[b.key]} label={b.label} onChange={v => setHotkeys({ ...hotkeys, [b.key]: v })} />
+                    )}
                   </div>
                 ))}
               </div>
