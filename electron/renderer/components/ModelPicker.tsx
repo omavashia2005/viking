@@ -60,7 +60,7 @@ export function ModelPicker({
           <Button
             autoFocus
             variant="outline"
-            className="h-auto w-full justify-start rounded-lg bg-black/20 p-3 text-left font-normal"
+            className="h-auto w-full justify-start rounded-lg bg-secondary p-3 text-left font-normal"
           >
             {selected && <ModelSelectorLogo provider={selected.provider} className="size-6" />}
             <span className="min-w-0 flex-1">

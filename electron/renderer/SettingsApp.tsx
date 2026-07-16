@@ -27,9 +27,9 @@ const MAIN_KEYS = [...'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', 'Space', 'Enter', 
 const BINDINGS: { key: keyof Hotkeys; label: string; hint: string; options?: string[]; implicitMod?: boolean }[] = [
   { key: 'open', label: 'open prompt', hint: 'global — works anywhere' },
   { key: 'settings', label: 'open settings', hint: 'this window' },
+  { key: 'back', label: 'back to results', hint: 'from a follow-up prompt' },
   { key: 'close', label: 'close overlay', hint: 'ignored while typing', options: ['q', 'Escape'] },
   { key: 'copy', label: 'copy active result', hint: '⌘/ctrl + key', options: ['c', 'y', 'p'], implicitMod: true },
-  { key: 'back', label: 'back to results', hint: 'from a follow-up prompt', options: ['CommandOrControl+Shift+B', 'CommandOrControl+Shift+O', 'Alt+ArrowLeft'] },
 ];
 
 // keep a custom binding from a hand-edited config selectable
@@ -222,7 +222,7 @@ export default function SettingsApp(): JSX.Element {
                   onChange={e => setLlm({ ...llm, apiKey: e.target.value })}
                   placeholder="AI_GATEWAY_API_KEY"
                   spellCheck={false}
-                  className="bg-black/20 caret-primary"
+                  className="bg-secondary caret-primary"
                 />
                 <span className="text-[10px] lowercase text-muted-foreground">stored locally in viking-settings.json</span>
               </label>
