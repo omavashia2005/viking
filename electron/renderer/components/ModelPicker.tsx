@@ -12,7 +12,7 @@ import {
   ModelSelectorLogo,
   ModelSelectorName,
   ModelSelectorTrigger,
-} from "@/src/components/ai-elements/model-selector";
+} from "@/electron/renderer/components/ai-elements/model-selector";
 import { Button } from "./ui/button";
 
 function providerName(provider: string): string {

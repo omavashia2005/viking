@@ -7,7 +7,7 @@ import {
   CodeBlockFilename,
   CodeBlockHeader,
   CodeBlockTitle,
-} from "@/src/components/ai-elements/code-block";
+} from "@/electron/renderer/components/ai-elements/code-block";
 import { FileIcon } from "lucide-react";
 
 export function CodeView({ option }: { option: Option }): JSX.Element {
