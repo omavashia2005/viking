@@ -4,7 +4,6 @@ import {
 	isLoopFinished,
 	NoObjectGeneratedError,
 	Output,
-	type InferSchema,
 	type UserContent,
 } from 'ai';
 import { config } from '../config';
@@ -26,7 +25,19 @@ export function getGateway(): ReturnType<typeof createGateway> {
 
 export type LaunchArgs = { cwd?: string; activeFile?: string };
 
-type UserInputBase = {
+const agents = {
+	code: {
+		instructions: codePrompts.system,
+		outputSchema: LLMResponse,
+		outputName: 'options',
+		buildPrompt: buildCodePrompt,
+		buildTools: buildCodeTools,
+		summarizeTool: codeToolSummary,
+	},
+};
+
+export type UserInput = {
+	agentType: keyof typeof agents;
 	userPrompt: string;
 	screenshot?: string;
 	launch?: LaunchArgs;
@@ -34,34 +45,13 @@ type UserInputBase = {
 	onReasoning?: (event: ReasoningProgress) => void;
 };
 
-const agents = {
-	code: {
-		instructions: codePrompts.system,
-		outputSchema: LLMResponse,
-		outputName: 'options',
-		buildPrompt: (input: UserInputBase) => buildCodePrompt(input.userPrompt, input.launch?.activeFile),
-		buildTools: buildCodeTools,
-		summarizeTool: codeToolSummary,
-	},
-};
-
-export type AgentType = keyof typeof agents;
-export type UserInput<T extends AgentType = AgentType> = UserInputBase & { type: T };
-type AgentOutput<T extends AgentType> = InferSchema<(typeof agents)[T]['outputSchema']>;
-
-export type LLMResult<TOutput> = {
-	output?: TOutput;
-	reasoning?: string;
-	softError?: string;
-};
-
-export async function generate<T extends AgentType>(input: UserInput<T>): Promise<LLMResult<AgentOutput<T>>> {
-	const agent = agents[input.type];
+export async function generate(input: UserInput) {
+	const agent = agents[input.agentType];
 	const cwd = input.launch?.cwd || config.cwd;
-	const prompt = agent.buildPrompt(input);
+	const prompt = agent.buildPrompt(input.userPrompt, input.launch?.activeFile);
 	const userContent: UserContent = [{ type: 'text', text: prompt }];
 	if (input.screenshot) userContent.push({ type: 'file', mediaType: 'image/jpeg', data: input.screenshot });
-	console.log('[viking:llm] query', { type: input.type, model: config.llm.model, hasScreenshot: !!input.screenshot, prompt });
+	console.log('[viking:llm] query', { agentType: input.agentType, model: config.llm.model, hasScreenshot: !!input.screenshot, prompt });
 
 	let reasoningStep = 0;
 	try {
@@ -104,7 +94,7 @@ export async function generate<T extends AgentType>(input: UserInput<T>): Promis
 			},
 		});
 		return {
-			output: result.output as AgentOutput<T>,
+			output: result.output,
 			reasoning: result.steps.map(step => step.reasoningText).filter(Boolean).join('\n\n') || undefined,
 		};
 	} catch (error) {

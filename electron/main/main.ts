@@ -218,7 +218,7 @@ async function run(prompt: string | undefined, refineFrom?: Option): Promise<voi
 	const screenshot = await captureScreen();
 	try {
 		const { output, reasoning, softError } = await generate({
-			type: 'code',
+			agentType: 'code',
 			userPrompt: buildPrompt(prompt, refineFrom) ?? '',
 			screenshot: screenshot ?? '',
 			launch: currentLaunch,
