@@ -86,6 +86,16 @@ function setMode(next: 'spotlight' | 'full'): void {
 	win.setBounds({ x: Math.round((width - w) / 2), y, width: w, height: h });
 }
 
+// Keep the frameless overlay reachable: clamp bounds inside its display's work area.
+function clampToWorkArea(b: Electron.Rectangle): Electron.Rectangle {
+	const wa = screen.getDisplayMatching(b).workArea;
+	return {
+		...b,
+		x: Math.max(wa.x, Math.min(b.x, wa.x + wa.width - b.width)),
+		y: Math.max(wa.y, Math.min(b.y, wa.y + wa.height - b.height)),
+	};
+}
+
 function createWindow(): BrowserWindow {
 	rendererReady = false;
 	const { width } = screen.getPrimaryDisplay().workAreaSize;
@@ -99,6 +109,12 @@ function createWindow(): BrowserWindow {
 	});
 	w0.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
 	w0.setAlwaysOnTop(true, 'screen-saver');
+	// 'moved' fires when a drag ends (macOS); snap back if the window left the screen.
+	w0.on('moved', () => {
+		const b = w0.getBounds();
+		const c = clampToWorkArea(b);
+		if (c.x !== b.x || c.y !== b.y) w0.setBounds(c);
+	});
 	w0.once('ready-to-show', () => {
 		rendererReady = true;
 		console.log('[viking] renderer ready');
@@ -237,7 +253,7 @@ app.whenReady().then(() => {
 			? 300
 			: Math.min(840, screen.getPrimaryDisplay().workArea.height - b.y - 24);
 		const min = mode === 'spotlight' ? SIZES.spotlight.h : 160;
-		win.setBounds({ ...b, height: Math.min(Math.max(Math.ceil(height), min), max) });
+		win.setBounds(clampToWorkArea({ ...b, height: Math.min(Math.max(Math.ceil(height), min), max) }));
 	});
 	ipcMain.on('viking:hide', hide);
 	ipcMain.on('viking:openSettings', () => openSettingsWindow());
