@@ -35,7 +35,6 @@ declare global {
       on: (ch: string, fn: (...a: any[]) => void) => void;
       submit: (p: { prompt: string; refineFrom?: Option }) => void;
       setActive: (idx: number) => void;
-      expand: () => void;
       resize: (height: number) => void; // content-driven window height (both modes)
       hide: () => void;
       openSettings: () => void;

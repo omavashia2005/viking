@@ -229,7 +229,6 @@ app.whenReady().then(() => {
 
 	ipcMain.on('viking:submit', (_e, payload: { prompt: string; refineFrom?: Option }) => run(payload.prompt, payload.refineFrom));
 	ipcMain.on('viking:setActive', (_e, idx: number) => { activeIdx = idx; });
-	ipcMain.on('viking:expand', () => setMode('full'));
 	// Content-driven height in both modes; width and position stay put.
 	ipcMain.on('viking:resize', (_e, height: number) => {
 		if (!win) return;

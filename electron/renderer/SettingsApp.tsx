@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ModelPicker } from './components/ModelPicker';
 import { THEMES, type Hotkeys, type LLM, type Theme } from './components/types';
@@ -66,8 +67,8 @@ function ThemeCard({ value, selected, onSelect }: { value: Theme; selected: bool
       )}
     >
       <span className="flex items-center gap-2 rounded-lg border border-border bg-card px-2.5 py-2">
-        <span className="text-[13px] leading-none text-primary">›</span>
-        <span className="text-[10px] italic leading-none text-muted-foreground">ask viking…</span>
+        <Search className="shrink-0 text-muted-foreground" size={11} />
+        <span className="text-[10px] italic leading-none text-muted-foreground">ask viking anything</span>
       </span>
       <span className="flex flex-col gap-1.5 rounded-lg border border-border bg-card p-2.5">
         <span className="flex gap-1.5">
