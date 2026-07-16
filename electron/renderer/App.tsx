@@ -185,7 +185,7 @@ export default function App(): JSX.Element {
 
   return (
     <Tabs value={String(active)} onValueChange={value => setActive(Number(value))} className={closing ? 'overlay gap-0 closing' : 'overlay gap-0'}>
-      <TitleBar phase={phase} options={options} />
+      {phase !== 'loading' && <TitleBar phase={phase} options={options} />}
 
       {phase === 'loading' && (
         <div className="toollog" ref={logRef}>

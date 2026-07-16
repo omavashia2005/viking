@@ -11,7 +11,6 @@ export function TitleBar({ phase, options }: {
     <header className="bar">
       <span className="brand">viking</span>
       <span className="sep">/</span>
-      {phase === 'loading' && <span className="state pulse">gathering context · querying model</span>}
       {phase === 'error' && <span className="state err">error</span>}
       {phase === 'results' && (
         <TabsList aria-label="Code options" className="ml-3 flex h-7 min-w-0 flex-1 overflow-hidden [-webkit-app-region:no-drag]">
