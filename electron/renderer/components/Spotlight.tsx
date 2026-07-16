@@ -1,4 +1,5 @@
 import React from 'react';
+import { Search } from 'lucide-react';
 import type { Option } from '@/shared-types';
 
 type Props = {
@@ -20,7 +21,7 @@ export function Spotlight({ prompt, refineFrom, inputRef, onChange, onSubmit, cl
   return (
     <div className={className ? `spot ${className}` : 'spot'}>
       <form className="prompt" onSubmit={e => { e.preventDefault(); onSubmit(); }}>
-        <span className="caret">›</span>
+        <Search className="caret" size={17} />
         <textarea
           ref={inputRef}
           value={prompt}
@@ -29,7 +30,7 @@ export function Spotlight({ prompt, refineFrom, inputRef, onChange, onSubmit, cl
             if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); onSubmit(); }
           }}
           rows={1}
-          placeholder={refineFrom ? `refine "${refineFrom.label}"…` : 'how do I…'}
+          placeholder={refineFrom ? `refine "${refineFrom.label}"…` : 'ask viking anything'}
           spellCheck={false}
           autoFocus
         />
