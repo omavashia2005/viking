@@ -2,14 +2,11 @@ import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { GatewayModel, Option, ReasoningProgress, ToolProgress } from '@/shared-types';
 import { CodeView } from './components/CodeView';
 import { ErrorView } from './components/ErrorView';
-import { ModelPicker } from './components/ModelPicker';
-import { SettingsPanel } from './components/SettingsPanel';
 import { SoftAlert } from './components/SoftAlert';
 import { Spotlight } from './components/Spotlight';
 import { TitleBar } from './components/TitleBar';
 import { ToolCallLog, type ToolCallEntry } from './components/ToolCallLog';
-import { ThemePicker } from './components/ThemePicker';
-import { THEMES, type Hotkeys, type LLM, type Phase, type Theme, type VikingState } from './components/types';
+import { THEMES, type Hotkeys, type LLM, type Phase, type Theme } from './components/types';
 import { Tabs, TabsContent } from './components/ui/tabs';
 
 function mergeToolCall(prev: ToolCallEntry[], event: ToolProgress): ToolCallEntry[] {
@@ -41,6 +38,7 @@ declare global {
       expand: () => void;
       resize: (height: number) => void; // spotlight-only prompt growth
       hide: () => void;
+      openSettings: () => void;
       getSettings: () => Promise<{ llm: LLM; hotkeys: Hotkeys; theme: Theme }>;
       getModels: () => Promise<GatewayModel[]>;
       saveSettings: (s: { llm?: Partial<LLM>; hotkeys?: Partial<Hotkeys>; theme?: Theme }) => Promise<void>;
@@ -50,22 +48,18 @@ declare global {
 
 export default function App(): JSX.Element {
   const [phase, setPhase] = useState<Phase>('hidden');
-  const [vikingState, setVikingState] = useState<VikingState>('main');
   const [options, setOptions] = useState<Option[]>([]);
   const [active, setActive] = useState(0);
   const [prompt, setPrompt] = useState('');
   const [error, setError] = useState('');
   const [softError, setSoftError] = useState('');
   const [refineFrom, setRefineFrom] = useState<Option | undefined>();
-  const [llm, setLlm] = useState<LLM>({ apiKey: '', model: '' });
-  const [hotkeys, setHotkeys] = useState<Hotkeys>({ open: '', settings: '', home: 'CommandOrControl+Shift+I', close: '', copy: '' });
+  const [hotkeys, setHotkeys] = useState<Hotkeys>({ open: '', settings: '', close: '', copy: '' });
   const [toolCalls, setToolCalls] = useState<ToolCallEntry[]>([]);
   const [reasoning, setReasoning] = useState<ReasoningProgress[]>([]);
   const [theme, setTheme] = useState<Theme>('onyx');
-  const [saved, setSaved] = useState(false);
   const [closing, setClosing] = useState(false);
   const hideTimer = useRef<number>();
-  const settingsReady = useRef(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const logRef = useRef<HTMLDivElement>(null);
 
@@ -79,7 +73,6 @@ export default function App(): JSX.Element {
       clearTimeout(hideTimer.current); setClosing(false); // reopened mid-close: cancel the pending hide
       setError(''); setSoftError(''); setPrompt(''); setToolCalls([]); setReasoning([]);
       setPhase('textbox');
-      setVikingState('main');
       setRefineFrom(mode === 'followup' ? refineFrom : undefined);
       setTimeout(() => inputRef.current?.focus(), 50);
     });
@@ -96,9 +89,13 @@ export default function App(): JSX.Element {
       setOptions(p.options); setActive(0); setPhase('results');
     });
     window.viking.on('viking:reset', () => { setPhase('hidden'); setClosing(false); });
+    // settings live in their own window now; mirror whatever it saves.
+    window.viking.on('viking:settings', (p: { llm: LLM; hotkeys: Hotkeys; theme: Theme }) => {
+      setHotkeys(p.hotkeys);
+      if (THEMES.includes(p.theme)) setTheme(p.theme);
+    });
     window.viking.getSettings().then(s => {
-      setLlm(s.llm);
-      setHotkeys({ ...s.hotkeys, home: s.hotkeys.home ?? 'CommandOrControl+Shift+I' });
+      setHotkeys(s.hotkeys);
       if (THEMES.includes(s.theme)) setTheme(s.theme);
     });
   }, []);
@@ -110,16 +107,16 @@ export default function App(): JSX.Element {
   // Loading is a live tail: keep the newest work visible as content grows or the window resizes.
   useEffect(() => {
     const el = logRef.current;
-    if (vikingState === 'main' && phase === 'loading' && el) el.scrollTop = el.scrollHeight;
-  }, [phase, reasoning, toolCalls, vikingState]);
+    if (phase === 'loading' && el) el.scrollTop = el.scrollHeight;
+  }, [phase, reasoning, toolCalls]);
 
   useEffect(() => {
     const el = logRef.current;
-    if (vikingState !== 'main' || phase !== 'loading' || !el) return;
+    if (phase !== 'loading' || !el) return;
     const observer = new ResizeObserver(() => { el.scrollTop = el.scrollHeight; });
     observer.observe(el);
     return () => observer.disconnect();
-  }, [phase, vikingState]);
+  }, [phase]);
 
   // Auto-dismiss the soft alert after ~5s. Timer resets whenever a new softError arrives.
   useEffect(() => {
@@ -128,43 +125,17 @@ export default function App(): JSX.Element {
     return () => clearTimeout(t);
   }, [softError]);
 
-  // Autosave settings on change. ponytail: per-keystroke write, debounce when disk thrash matters.
-  useEffect(() => {
-    if (!settingsReady.current) return;
-    let cancelled = false;
-    const t = setTimeout(async () => {
-      await window.viking.saveSettings({ llm, hotkeys, theme });
-      if (!cancelled) { setSaved(true); setTimeout(() => setSaved(false), 1200); }
-    }, 250);
-    return () => { cancelled = true; clearTimeout(t); };
-  }, [llm, hotkeys, theme]);
-
   useEffect(() => {
     const onKey = async (e: KeyboardEvent) => {
-      if (matchesShortcut(e, hotkeys.home)) { e.preventDefault(); setVikingState('main'); return; }
       if (e.defaultPrevented) return;
+      // Settings open in their own window; works while typing, like the old panes did.
+      if (matchesShortcut(e, hotkeys.settings)) { e.preventDefault(); window.viking.openSettings(); return; }
       const t = e.target as HTMLElement | null;
       const editable = !!t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || (t as any).isContentEditable);
       const mod = e.metaKey || e.ctrlKey;
       // The configured shortcut closes when no input is focused; Esc stays the escape-hatch while typing.
       if (!editable && matchesShortcut(e, hotkeys.close)) { e.preventDefault(); return close(); }
       if (editable && e.key === 'Escape') return close();
-      const pane = matchesShortcut(e, hotkeys.settings)
-        ? 'keymaps'
-        : mod ? ({ s: 'provider', t: 'theme' } as const)[e.key.toLowerCase()] : undefined;
-      if (pane) {
-        e.preventDefault();
-        settingsReady.current = false;
-        const s = await window.viking.getSettings();
-        setLlm(s.llm); setHotkeys({ ...s.hotkeys, home: s.hotkeys.home ?? 'CommandOrControl+Shift+I' });
-        if (THEMES.includes(s.theme)) setTheme(s.theme);
-        setSaved(false);
-        setVikingState(pane);
-        window.viking.expand();
-        // mark ready after the populated state has flushed, so the autosave effect skips the load.
-        setTimeout(() => { settingsReady.current = true; }, 0);
-        return;
-      }
       if (mod && /^[1-9]$/.test(e.key)) {
         const i = +e.key - 1;
         if (i < options.length) setActive(i);
@@ -191,7 +162,7 @@ export default function App(): JSX.Element {
   const alertEl = <SoftAlert message={softError} onDismiss={() => setSoftError('')} />;
 
   // Spotlight layout for textbox / follow-up phase
-  if (vikingState === 'main' && phase === 'textbox') {
+  if (phase === 'textbox') {
     return (
       <Spotlight
         prompt={prompt}
@@ -208,53 +179,21 @@ export default function App(): JSX.Element {
 
   return (
     <Tabs value={String(active)} onValueChange={value => setActive(Number(value))} className={closing ? 'overlay gap-0 closing' : 'overlay gap-0'}>
-      <TitleBar phase={vikingState === 'main' ? phase : vikingState} options={options} />
+      <TitleBar phase={phase} options={options} />
 
       {phase === 'loading' && (
-        <div className={vikingState === 'main' ? 'toollog' : 'toollog hidden'} ref={logRef}>
+        <div className="toollog" ref={logRef}>
           <ToolCallLog calls={toolCalls} reasoning={reasoning} />
         </div>
       )}
 
       {phase === 'results' && options.map((option, i) => (
-        <TabsContent key={i} value={String(i)} className={vikingState === 'main' ? 'flex min-h-0' : 'hidden'}>
+        <TabsContent key={i} value={String(i)} className="flex min-h-0">
           <CodeView option={option} />
         </TabsContent>
       ))}
 
-      {vikingState === 'main' && phase === 'error' && <ErrorView message={error} />}
-
-      {vikingState === 'provider' && (
-        <SettingsPanel
-          saved={saved}
-          hint={`${hotkeys.close} to close · ${hotkeys.settings} keymaps · ⌘T theme · ${hotkeys.home} main`}
-          fields={[
-            { label: 'AI Gateway API key', value: llm.apiKey, onChange: v => setLlm({ ...llm, apiKey: v }), placeholder: 'AI_GATEWAY_API_KEY', type: 'password' },
-          ]}
-        >
-          <ModelPicker value={llm.model} onChange={model => setLlm({ ...llm, model })} />
-        </SettingsPanel>
-      )}
-
-      {vikingState === 'theme' && (
-        <SettingsPanel saved={saved} hint={`${hotkeys.close} to close · ⌘S provider · ${hotkeys.settings} keymaps · ${hotkeys.home} main`} fields={[]}>
-          <ThemePicker theme={theme} onChange={setTheme} />
-        </SettingsPanel>
-      )}
-
-      {vikingState === 'keymaps' && (
-        <SettingsPanel
-          saved={saved}
-          hint={`${hotkeys.close} to close · ⌘S provider · ⌘T theme · ${hotkeys.home} main`}
-          fields={[
-            { label: 'open prompt (global)', value: hotkeys.open, onChange: v => setHotkeys({ ...hotkeys, open: v }), options: ['CommandOrControl+I', 'CommandOrControl+Space', 'Alt+I'], autoFocus: true },
-            { label: 'open settings (window)', value: hotkeys.settings, onChange: v => setHotkeys({ ...hotkeys, settings: v }), options: ['CommandOrControl+K', 'CommandOrControl+,', 'CommandOrControl+Shift+K'] },
-            { label: 'return home (window)', value: hotkeys.home, onChange: v => setHotkeys({ ...hotkeys, home: v }), options: ['CommandOrControl+Shift+I', 'CommandOrControl+Shift+V', 'Alt+Shift+I'] },
-            { label: 'close key (window, ignored while typing)', value: hotkeys.close, onChange: v => setHotkeys({ ...hotkeys, close: v }), options: ['q', 'Escape'] },
-            { label: 'copy active (⌘/Ctrl + …)', value: hotkeys.copy, onChange: v => setHotkeys({ ...hotkeys, copy: v }), options: ['c', 'y', 'p'] },
-          ]}
-        />
-      )}
+      {phase === 'error' && <ErrorView message={error} />}
       {alertEl}
     </Tabs>
   );

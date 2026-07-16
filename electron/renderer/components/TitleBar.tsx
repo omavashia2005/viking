@@ -1,10 +1,10 @@
 import React from 'react';
 import type { Option } from '@/shared-types';
 import { TabsList, TabsTrigger } from './ui/tabs';
-import type { Phase, VikingState } from './types';
+import type { Phase } from './types';
 
 export function TitleBar({ phase, options }: {
-  phase: Phase | Exclude<VikingState, 'main'>;
+  phase: Phase;
   options: Option[];
 }): JSX.Element {
   return (
@@ -13,9 +13,6 @@ export function TitleBar({ phase, options }: {
       <span className="sep">/</span>
       {phase === 'loading' && <span className="state pulse">gathering context · querying model</span>}
       {phase === 'error' && <span className="state err">error</span>}
-      {phase === 'provider' && <span className="state">model</span>}
-      {phase === 'keymaps' && <span className="state">keymaps</span>}
-      {phase === 'theme' && <span className="state">theme</span>}
       {phase === 'results' && (
         <TabsList aria-label="Code options" className="ml-3 flex h-7 min-w-0 flex-1 overflow-hidden [-webkit-app-region:no-drag]">
           {options.map((o, i) => (
