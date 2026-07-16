@@ -36,7 +36,7 @@ declare global {
       submit: (p: { prompt: string; refineFrom?: Option }) => void;
       setActive: (idx: number) => void;
       expand: () => void;
-      resize: (height: number) => void; // spotlight-only prompt growth
+      resize: (height: number) => void; // content-driven window height (both modes)
       hide: () => void;
       openSettings: () => void;
       getSettings: () => Promise<{ llm: LLM; hotkeys: Hotkeys; theme: Theme }>;
@@ -114,6 +114,15 @@ export default function App(): JSX.Element {
     const el = logRef.current;
     if (phase !== 'loading' || !el) return;
     const observer = new ResizeObserver(() => { el.scrollTop = el.scrollHeight; });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [phase]);
+
+  // Content height drives the window: watch whichever root (.spot / .overlay) is mounted.
+  useEffect(() => {
+    const el = document.querySelector<HTMLElement>('.spot, .overlay');
+    if (!el) return;
+    const observer = new ResizeObserver(() => window.viking.resize(el.offsetHeight));
     observer.observe(el);
     return () => observer.disconnect();
   }, [phase]);

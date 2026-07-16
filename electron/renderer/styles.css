@@ -38,7 +38,8 @@
 
 /* overlay chrome — unlayered on purpose so these rules win over utility classes,
    matching the old inline-<style> cascade */
-.overlay, .spot { height: 100vh; display: flex; flex-direction: column;
+/* natural height: content drives the window size (App.tsx reports it via ResizeObserver) */
+.overlay, .spot { display: flex; flex-direction: column;
   background: var(--card);
   border: 1px solid var(--border); border-radius: 14px; overflow: hidden;
   box-shadow: 0 30px 80px rgba(0,0,0,0.5); -webkit-app-region: drag;
@@ -83,14 +84,14 @@
   letter-spacing: 0.1em; border: 1px solid color-mix(in srgb, var(--primary) 35%, transparent);
   padding: 2px 8px; border-radius: 999px; }
 
-.toollog { flex: 1; min-height: 0; padding: 18px; overflow-y: auto;
+.toollog { flex: 1; min-height: 0; max-height: 400px; padding: 18px; overflow-y: auto;
   -webkit-app-region: no-drag;
   contain: paint; transform: translateZ(0); will-change: scroll-position;
   overscroll-behavior: contain; scrollbar-gutter: stable; }
 .toollog.compact { flex: 0 0 auto; max-height: 150px; padding: 10px 18px;
   border-bottom: 1px solid var(--border); }
 
-.codewrap { flex: 1; display: flex; flex-direction: column; min-height: 0; -webkit-app-region: no-drag; }
+.codewrap { flex: 1; display: flex; flex-direction: column; min-height: 0; max-height: 620px; -webkit-app-region: no-drag; }
 /* shared scrollbar treatment — thinner, less paint-heavy */
 .codewrap [data-language] > div::-webkit-scrollbar, .toollog::-webkit-scrollbar, .prompt textarea::-webkit-scrollbar { width: 6px; height: 6px; }
 .codewrap [data-language] > div::-webkit-scrollbar-track, .toollog::-webkit-scrollbar-track, .prompt textarea::-webkit-scrollbar-track { background: transparent; }

@@ -71,30 +71,19 @@ let mode: 'spotlight' | 'full' = 'full';
 let rendererReady = false;
 let pendingShow: { mode: 'textbox' | 'followup'; refineFrom?: Option } | null = null;
 
+// h is each mode's floor/initial height; content reports its real height via viking:resize.
 const SIZES = {
 	spotlight: { w: 600, h: 64, y: 80 },
-	full: { w: 720, h: 460, y: 16 },
+	full: { w: 720, h: 200, y: 16 },
 };
-// User-resizable bounds for 'full' mode; content lays itself out inside whatever
-// size the user picks, so min must comfortably fit settings/results chrome.
-const MIN = { w: 560, h: 340 };
-const MAX = { w: 1200, h: 840 };
-let fullSize = { w: SIZES.full.w, h: SIZES.full.h }; // last size the user set in 'full'
 
-// Resize only when switching modes; 'full' restores the user's last size.
+// Spotlight-style: the user never resizes the window; content height drives it.
 function setMode(next: 'spotlight' | 'full'): void {
 	if (!win || mode === next) return;
 	mode = next;
 	const { width } = screen.getPrimaryDisplay().workAreaSize;
-	if (next === 'spotlight') {
-		win.setResizable(false);
-		win.setMinimumSize(SIZES.spotlight.w, SIZES.spotlight.h);
-		win.setBounds({ x: Math.round((width - SIZES.spotlight.w) / 2), y: SIZES.spotlight.y, width: SIZES.spotlight.w, height: SIZES.spotlight.h });
-	} else {
-		win.setMinimumSize(MIN.w, MIN.h);
-		win.setResizable(true);
-		win.setBounds({ x: Math.round((width - fullSize.w) / 2), y: SIZES.full.y, width: fullSize.w, height: fullSize.h });
-	}
+	const { w, h, y } = SIZES[next];
+	win.setBounds({ x: Math.round((width - w) / 2), y, width: w, height: h });
 }
 
 function createWindow(): BrowserWindow {
@@ -103,9 +92,8 @@ function createWindow(): BrowserWindow {
 	const { w, h, y } = SIZES.full;
 	const w0 = new BrowserWindow({
 		width: w, height: h,
-		minWidth: MIN.w, minHeight: MIN.h, maxWidth: MAX.w, maxHeight: MAX.h,
 		x: Math.round((width - w) / 2), y,
-		transparent: true, frame: false, resizable: true, movable: true,
+		transparent: true, frame: false, resizable: false, movable: true,
 		alwaysOnTop: true, skipTaskbar: true, hasShadow: false, show: false,
 		webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true },
 	});
@@ -119,11 +107,6 @@ function createWindow(): BrowserWindow {
 			pendingShow = null;
 			show(pending.mode, pending.refineFrom);
 		}
-	});
-	w0.on('resized', () => {
-		if (mode !== 'full') return;
-		const b = w0.getBounds();
-		fullSize = { w: b.width, h: b.height };
 	});
 	w0.loadFile('public/index.html');
 	if (process.env.VIKING_DEVTOOLS) w0.webContents.openDevTools({ mode: 'detach' });
@@ -247,11 +230,15 @@ app.whenReady().then(() => {
 	ipcMain.on('viking:submit', (_e, payload: { prompt: string; refineFrom?: Option }) => run(payload.prompt, payload.refineFrom));
 	ipcMain.on('viking:setActive', (_e, idx: number) => { activeIdx = idx; });
 	ipcMain.on('viking:expand', () => setMode('full'));
-	// Spotlight only: grow with the typed prompt. In 'full' the user owns the size.
+	// Content-driven height in both modes; width and position stay put.
 	ipcMain.on('viking:resize', (_e, height: number) => {
-		if (!win || mode !== 'spotlight') return;
+		if (!win) return;
 		const b = win.getBounds();
-		win.setBounds({ ...b, height: Math.min(Math.max(Math.ceil(height), SIZES.spotlight.h), 300) });
+		const max = mode === 'spotlight'
+			? 300
+			: Math.min(840, screen.getPrimaryDisplay().workArea.height - b.y - 24);
+		const min = mode === 'spotlight' ? SIZES.spotlight.h : 160;
+		win.setBounds({ ...b, height: Math.min(Math.max(Math.ceil(height), min), max) });
 	});
 	ipcMain.on('viking:hide', hide);
 	ipcMain.on('viking:openSettings', () => openSettingsWindow());
