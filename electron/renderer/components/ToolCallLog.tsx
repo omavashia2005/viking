@@ -145,16 +145,8 @@ export function ToolCallLog({
     return () => window.clearInterval(timer);
   }, []);
 
-  if (calls.length === 0) {
-    return (
-      <div className="mx-auto mt-[100px] max-w-sm" role="status">
-        <ToolActivity elapsed={elapsed} />
-      </div>
-    );
-  }
-
   const completed = calls.filter((call) => call.status !== "running").length;
-  const toolTask = calls.length > 0 && (
+  return (
     <Task defaultOpen>
       <TaskTrigger title={`Tools · ${completed}/${calls.length}`} />
       <TaskContent>
@@ -190,6 +182,4 @@ export function ToolCallLog({
       </TaskContent>
     </Task>
   );
-
-  return <>{toolTask}</>;
 }
