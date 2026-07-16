@@ -2,8 +2,8 @@ import { app, BrowserWindow, globalShortcut, ipcMain, screen, desktopCapturer, n
 import path from 'node:path';
 import fs from 'node:fs';
 import { config } from './config';
-import { generate, type LaunchArgs } from './code/llm';
-import type { Option, ReasoningProgress } from './code/shared-types';
+import { generate, type LaunchArgs } from './agent/code/llm';
+import type { Option, ReasoningProgress } from './agent/code/shared-types';
 import { closeMcpConnections, warmMcpConnections } from './agent/tools/tools';
 import type { ToolProgress } from './agent/tools/shared-types';
 import { getGatewayModels } from './agent/gateway-models';
