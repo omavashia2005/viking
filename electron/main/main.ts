@@ -19,6 +19,7 @@ function parseLaunchArgs(argv: string[]): LaunchArgs {
 }
 
 let currentLaunch: LaunchArgs = parseLaunchArgs(process.argv);
+console.log('[viking] process argv:', process.argv);
 console.log('[viking] launch args:', currentLaunch);
 
 function warmLaunchConnections(launch: LaunchArgs): void {
@@ -33,6 +34,7 @@ if (!app.requestSingleInstanceLock()) {
 } else {
 	warmLaunchConnections(currentLaunch);
 	app.on('second-instance', (_e, argv) => {
+		console.log('[viking] second-instance argv:', argv);
 		currentLaunch = parseLaunchArgs(argv);
 		console.log('[viking] launch args:', currentLaunch);
 		warmLaunchConnections(currentLaunch);
@@ -107,6 +109,7 @@ function createWindow(): BrowserWindow {
 	w0.setAlwaysOnTop(true, 'screen-saver');
 	w0.once('ready-to-show', () => {
 		rendererReady = true;
+		console.log('[viking] renderer ready');
 		if (pendingShow) {
 			const pending = pendingShow;
 			pendingShow = null;
@@ -123,7 +126,6 @@ function createWindow(): BrowserWindow {
 	w0.webContents.on('render-process-gone', (_e, d) => console.error('[viking] renderer gone:', d));
 	w0.webContents.on('preload-error', (_e, p, err) => console.error('[viking] preload error:', p, err));
 	w0.webContents.on('did-fail-load', (_e, code, desc) => console.error('[viking] load failed:', code, desc));
-	console.log("this was here");
 	return w0;
 }
 
@@ -138,12 +140,15 @@ async function captureScreen(): Promise<string | undefined> {
 }
 
 function show(mode: 'textbox' | 'followup', refineFrom?: Option): void {
+	console.log('[viking] show request:', { mode, hasWindow: !!win, rendererReady, cwd: currentLaunch.cwd, activeFile: currentLaunch.activeFile });
 	if (!win) win = createWindow();
 	if (!rendererReady) {
+		console.log('[viking] show queued until renderer is ready');
 		pendingShow = { mode, refineFrom };
 		return;
 	}
 	setMode('spotlight');
+	console.log('[viking] showing window');
 	win.show();
 	app.focus({ steal: true }); // macOS: bring our app forward so the textarea gets keyboard input
 	win.focus();
@@ -200,6 +205,7 @@ async function run(prompt: string | undefined, refineFrom?: Option): Promise<voi
 }
 
 app.whenReady().then(() => {
+	console.log('[viking] app ready');
 	loadSettings();
 	win = createWindow();
 

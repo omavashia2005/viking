@@ -1,6 +1,5 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { tool, type FlexibleSchema, type Tool } from 'ai';
-
 import fs from 'node:fs';
 import path from 'node:path';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
@@ -35,16 +34,6 @@ export const mcpConnectionPool: McpConnectionPool = new Map();
 
 const registeredTools = new Map<string, RegisteredTool>();
 
-async function callTool(client: Client, tool: string, args: ToolArguments): Promise<string> {
-	const res = await client.callTool({ name: tool, arguments: args });
-	const content = (res.content as McpToolContent[]) ?? [];
-	return content.filter(c => c.type === 'text').map(c => c.text ?? '').join('\n');
-}
-
-function connectionKey(server: McpServer, cwd: string): string {
-	return server === 'fff' ? `fff:${path.resolve(cwd)}` : server;
-}
-
 async function openMcp(spec: McpServerSpec, warmupMs = 0): Promise<Client> {
 	const client = new Client({ name: 'viking', version: '0.1.0' });
 	try {
@@ -58,7 +47,7 @@ async function openMcp(spec: McpServerSpec, warmupMs = 0): Promise<Client> {
 }
 
 function getMcpConnection(server: McpServer, cwd: string): Promise<Client> {
-	const key = connectionKey(server, cwd);
+	const key = server === 'fff' ? `fff:${path.resolve(cwd)}` : server;
 	const existing = mcpConnectionPool.get(key);
 	if (existing) return existing;
 
@@ -75,10 +64,12 @@ function getMcpConnection(server: McpServer, cwd: string): Promise<Client> {
 }
 
 async function callMcp(server: McpServer, cwd: string, tool: string, args: ToolArguments): Promise<string> {
-	const key = connectionKey(server, cwd);
+	const key = server === 'fff' ? `fff:${path.resolve(cwd)}` : server;
 	const connection = getMcpConnection(server, cwd);
 	try {
-		return await callTool(await connection, tool, args);
+		const res = await (await connection).callTool({ name: tool, arguments: args });
+		const content = (res.content as McpToolContent[]) ?? [];
+		return content.filter(c => c.type === 'text').map(c => c.text ?? '').join('\n');
 	} catch (error) {
 		if (mcpConnectionPool.get(key) === connection) mcpConnectionPool.delete(key);
 		const client = await connection.catch(() => undefined);
@@ -136,26 +127,35 @@ function preview(result?: string): string[] | undefined {
 }
 
 export function toolSummary(name: string, args: ToolArguments, result?: string): ToolSummary {
+	const previewLines = preview(result);
+	let summary: ToolSummary = { type: 'raw', args, preview: previewLines };
+
 	if (name === 'grep_codebase' || name === 'find_files') {
 		const parsed = QueryArgs.safeParse(args);
-		return parsed.success
-			? { type: 'search', query: parsed.data.query, preview: preview(result), lineCount: result?.split('\n').filter(Boolean).length }
-			: { type: 'raw', args, preview: preview(result) };
+		if (parsed.success) {
+			summary = {
+				type: 'search',
+				query: parsed.data.query,
+				preview: previewLines,
+				lineCount: result?.split('\n').filter(Boolean).length,
+			};
+		}
+		return summary;
 	}
+
 	if (name === 'read_file') {
 		const parsed = ReadFileArgs.safeParse(args);
-		return parsed.success ? { type: 'read_file', ...parsed.data } : { type: 'raw', args, preview: preview(result) };
+		if (parsed.success) summary = { type: 'read_file', ...parsed.data };
+		return summary;
 	}
+
 	if (name === 'resolve_library_id' || name === 'get_library_docs') {
 		const parsed = name === 'resolve_library_id' ? ResolveLibraryArgs.safeParse(args) : GetLibraryDocsArgs.safeParse(args);
-		return parsed.success ? { type: 'library', ...parsed.data, preview: preview(result) } : { type: 'raw', args, preview: preview(result) };
+		if (parsed.success) summary = { type: 'library', ...parsed.data, preview: previewLines };
+		return summary;
 	}
-	return { type: 'raw', args, preview: preview(result) };
-}
 
-export function registerTool(tool: RegisteredTool): RegisteredTool {
-	registeredTools.set(tool.name, tool);
-	return tool;
+	return summary;
 }
 
 export function buildTools(cwd: string): Record<string, BuiltTool> {
@@ -193,35 +193,35 @@ async function runGetLibraryDocs(args: ToolArguments, context: ToolContext): Pro
 	});
 }
 
-registerTool({
+registeredTools.set('grep_codebase', {
 	name: 'grep_codebase',
 	description: "Search the user's codebase file contents. Query is a BARE identifier or literal substring — no regex. Prepend a constraint for scope: '*.ts query', 'src/ query', '!test/ query'.",
 	inputSchema: QueryArgs,
 	run: runGrepCodebase,
 });
 
-registerTool({
+registeredTools.set('find_files', {
 	name: 'find_files',
 	description: "Fuzzy file-name search in the user's codebase. Keep query to 1-2 short terms; supports glob constraints e.g. 'name **/src/*.{ts,tsx}'.",
 	inputSchema: QueryArgs,
 	run: runFindFiles,
 });
 
-registerTool({
+registeredTools.set('read_file', {
 	name: 'read_file',
 	description: "Read a file from the user's codebase. Prefer this after grep_codebase points to a definition. Returns the requested line range (defaults to whole file, capped at 400 lines).",
 	inputSchema: ReadFileArgs,
 	run: runReadFile,
 });
 
-registerTool({
+registeredTools.set('resolve_library_id', {
 	name: 'resolve_library_id',
 	description: "REQUIRED before get_library_docs. Resolve a plain library name (e.g. 'react', 'zod') to the context7 library id.",
 	inputSchema: ResolveLibraryArgs,
 	run: runResolveLibraryId,
 });
 
-registerTool({
+registeredTools.set('get_library_docs', {
 	name: 'get_library_docs',
 	description: "Fetch docs for a topic. libraryId MUST be from resolve_library_id (format '/org/lib' or '/org/lib/version'). Never pass a bare name.",
 	inputSchema: GetLibraryDocsArgs,

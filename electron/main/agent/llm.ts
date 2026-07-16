@@ -7,7 +7,6 @@ import { buildTools, toolSummary } from './tools/tools';
 import { ToolOutput, type ToolProgress } from './tools/shared-types';
 
 export type LaunchArgs = { cwd?: string; activeFile?: string };
-type SeedContextResult = { cwd: string; activeFileSnippet: string };
 type GenerateToolProgressCallback = (event: ToolProgress) => void;
 type GenerateReasoningProgressCallback = (event: ReasoningProgress) => void;
 type LLMResult = { options: Option[]; reasoning?: string; softError?: string };
@@ -19,18 +18,13 @@ type userInput = {
 	onReasoning?: GenerateReasoningProgressCallback;
 };
 
-function seedContext(launch: LaunchArgs | undefined): SeedContextResult {
-	const cwd = launch?.cwd || config.cwd;
-	let snippet = '';
-	if (launch?.activeFile) {
-		try { snippet = fs.readFileSync(launch.activeFile, 'utf8').split('\n').slice(0, 200).join('\n'); } catch { }
-	}
-	return { cwd, activeFileSnippet: snippet };
-}
-
 export async function generate(input: userInput): Promise<LLMResult> {
 	const { userPrompt, screenshot, launch, onTool, onReasoning } = input;
-	const { cwd, activeFileSnippet } = seedContext(launch);
+	const cwd = launch?.cwd || config.cwd;
+	let activeFileSnippet = '';
+	if (launch?.activeFile) {
+		try { activeFileSnippet = fs.readFileSync(launch.activeFile, 'utf8').split('\n').slice(0, 200).join('\n'); } catch { }
+	}
 	const model = createGateway({ apiKey: config.llm.apiKey })(config.llm.model);
 
 	const ctx: Context = {
