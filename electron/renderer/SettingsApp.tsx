@@ -79,10 +79,7 @@ function ThemeCard({ value, selected, onSelect }: { value: Theme; selected: bool
         <span className="block h-[3px] w-3/5 rounded-full bg-foreground/30" />
         <span className="block h-[3px] w-2/3 rounded-full bg-foreground/15" />
       </span>
-      <span className="flex items-baseline justify-between px-0.5">
-        <span className="text-[10.5px] lowercase tracking-[0.16em] text-foreground">{value}</span>
-        {selected && <span className="text-[9.5px] lowercase tracking-[0.1em] text-primary">active</span>}
-      </span>
+      <span className="px-0.5 text-[10.5px] lowercase tracking-[0.16em] text-foreground">{value}</span>
     </button>
   );
 }
