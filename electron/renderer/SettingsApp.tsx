@@ -90,6 +90,7 @@ export default function SettingsApp(): JSX.Element {
   const [llm, setLlm] = useState<LLM>({ apiKey: '', model: '' });
   const [hotkeys, setHotkeys] = useState<Hotkeys>({ open: '', settings: '', close: '', copy: '', back: '' });
   const [theme, setTheme] = useState<Theme>('onyx');
+  const [growth, setGrowth] = useState<'down' | 'up'>('down');
   const [saved, setSaved] = useState(false);
   const ready = useRef(false);
 
@@ -102,6 +103,7 @@ export default function SettingsApp(): JSX.Element {
       setLlm(s.llm);
       setHotkeys(s.hotkeys);
       if (THEMES.includes(s.theme)) setTheme(s.theme);
+      setGrowth(s.growth === 'up' ? 'up' : 'down');
       // mark ready after the populated state has flushed, so the autosave effect skips the load
       setTimeout(() => { ready.current = true; }, 0);
     });
@@ -114,11 +116,11 @@ export default function SettingsApp(): JSX.Element {
     if (!ready.current) return;
     let cancelled = false;
     const t = setTimeout(async () => {
-      await window.viking.saveSettings({ llm, hotkeys, theme });
+      await window.viking.saveSettings({ llm, hotkeys, theme, growth });
       if (!cancelled) { setSaved(true); setTimeout(() => setSaved(false), 1200); }
     }, 250);
     return () => { cancelled = true; clearTimeout(t); };
-  }, [llm, hotkeys, theme]);
+  }, [llm, hotkeys, theme, growth]);
 
   return (
     // --background is transparent for the overlay's sake; this window paints its own surface.
@@ -183,6 +185,26 @@ export default function SettingsApp(): JSX.Element {
               <PageHead title="appearance" sub="themes apply to the overlay and this window, instantly" />
               <div className="flex flex-wrap gap-4">
                 {THEMES.map(t => <ThemeCard key={t} value={t} selected={t === theme} onSelect={() => setTheme(t)} />)}
+              </div>
+              <div className="flex flex-col gap-2">
+                <span className={MICRO}>expand</span>
+                <div className="flex gap-2">
+                  {([['down', 'below the bar'], ['up', 'above the bar']] as const).map(([v, label]) => (
+                    <button
+                      key={v}
+                      type="button"
+                      onClick={() => setGrowth(v)}
+                      aria-pressed={growth === v}
+                      className={cn(
+                        'rounded-md border px-3 py-1.5 text-[11px] lowercase tracking-[0.08em] outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none',
+                        growth === v ? 'border-transparent bg-secondary text-foreground ring-1 ring-ring' : 'border-border text-muted-foreground hover:text-foreground',
+                      )}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                <span className="text-[10px] lowercase text-muted-foreground">"above" suits a bar dragged to the bottom of the screen</span>
               </div>
             </section>
           )}

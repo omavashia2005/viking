@@ -39,9 +39,9 @@ declare global {
       hide: () => void;
       back: () => void;
       openSettings: () => void;
-      getSettings: () => Promise<{ llm: LLM; hotkeys: Hotkeys; theme: Theme }>;
+      getSettings: () => Promise<{ llm: LLM; hotkeys: Hotkeys; theme: Theme; growth: 'down' | 'up' }>;
       getModels: () => Promise<GatewayModel[]>;
-      saveSettings: (s: { llm?: Partial<LLM>; hotkeys?: Partial<Hotkeys>; theme?: Theme }) => Promise<void>;
+      saveSettings: (s: { llm?: Partial<LLM>; hotkeys?: Partial<Hotkeys>; theme?: Theme; growth?: 'down' | 'up' }) => Promise<void>;
     };
   }
 }

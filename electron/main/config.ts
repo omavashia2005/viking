@@ -15,6 +15,7 @@ export const config = {
 		model: process.env.LLM_MODEL ?? 'anthropic/claude-opus-4.8',
 	},
 	theme: 'onyx', // overlay theme; see electron/renderer/themes.css for the available blocks
+	growth: 'down' as 'down' | 'up', // which way the overlay grows from the bar; 'up' suits a bottom-of-screen placement
 	// Default doc lookup; user retunes by editing.
 	// ponytail: single language for v0, add detection from screenshot when one language stops being enough.
 	defaultLanguage: 'typescript',

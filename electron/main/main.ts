@@ -44,7 +44,7 @@ if (!app.requestSingleInstanceLock()) {
 
 const settingsFile = () => path.join(app.getPath('userData'), 'viking-settings.json');
 // ponytail: plaintext api key on disk under the user's app data. Swap for keytar if shared machines matter.
-type Persisted = { llm?: Partial<typeof config.llm>; hotkeys?: Partial<typeof config.hotkeys>; theme?: string };
+type Persisted = { llm?: Partial<typeof config.llm>; hotkeys?: Partial<typeof config.hotkeys>; theme?: string; growth?: 'down' | 'up' };
 function loadSettings(): void {
 	try {
 		const j: Persisted = JSON.parse(fs.readFileSync(settingsFile(), 'utf8'));
@@ -55,13 +55,15 @@ function loadSettings(): void {
 			Object.assign(config.hotkeys, j.hotkeys);
 		}
 		if (j.theme) config.theme = j.theme;
+		if (j.growth) config.growth = j.growth;
 	} catch { }
 }
 function saveSettings(s: Persisted): void {
 	if (s.llm) Object.assign(config.llm, s.llm);
 	if (s.hotkeys) Object.assign(config.hotkeys, s.hotkeys);
 	if (s.theme) config.theme = s.theme;
-	fs.writeFileSync(settingsFile(), JSON.stringify({ llm: config.llm, hotkeys: config.hotkeys, theme: config.theme }, null, 2));
+	if (s.growth) config.growth = s.growth;
+	fs.writeFileSync(settingsFile(), JSON.stringify({ llm: config.llm, hotkeys: config.hotkeys, theme: config.theme, growth: config.growth }, null, 2));
 }
 
 let win: BrowserWindow | null = null;
@@ -81,9 +83,11 @@ const SIZES = {
 function setMode(next: 'spotlight' | 'full'): void {
 	if (!win || mode === next) return;
 	mode = next;
-	const { width } = screen.getPrimaryDisplay().workAreaSize;
+	const area = screen.getPrimaryDisplay().workArea;
 	const { w, h, y } = SIZES[next];
-	win.setBounds({ x: Math.round((width - w) / 2), y, width: w, height: h });
+	// growth 'up': mirror the top-anchored y as a bottom margin so a mode switch doesn't teleport a bottom-dweller to the top.
+	const top = config.growth === 'up' ? area.y + area.height - h - y : y;
+	win.setBounds({ x: Math.round((area.width - w) / 2), y: top, width: w, height: h });
 }
 
 // Keep the frameless overlay reachable: clamp bounds inside its display's work area.
@@ -248,17 +252,21 @@ app.whenReady().then(() => {
 	ipcMain.on('viking:resize', (_e, height: number) => {
 		if (!win) return;
 		const b = win.getBounds();
+		const area = screen.getPrimaryDisplay().workArea;
 		const max = mode === 'spotlight'
 			? 300
-			: Math.min(840, screen.getPrimaryDisplay().workArea.height - b.y - 24);
+			: Math.min(840, (config.growth === 'up' ? b.y + b.height - area.y : area.height - b.y) - 24);
 		const min = mode === 'spotlight' ? SIZES.spotlight.h : 160;
-		win.setBounds(clampToWorkArea({ ...b, height: Math.min(Math.max(Math.ceil(height), min), max) }));
+		const h = Math.min(Math.max(Math.ceil(height), min), max);
+		// growth 'up': bottom edge stays put, window grows toward the top of the work area.
+		const y = config.growth === 'up' ? b.y + b.height - h : b.y;
+		win.setBounds(clampToWorkArea({ ...b, y, height: h }));
 	});
 	ipcMain.on('viking:hide', hide);
 	ipcMain.on('viking:back', () => setMode('full')); // follow-up prompt back to results: spotlight is too narrow for them
 
 	ipcMain.on('viking:openSettings', () => openSettingsWindow());
-	ipcMain.handle('viking:getSettings', () => ({ llm: { ...config.llm }, hotkeys: { ...config.hotkeys }, theme: config.theme }));
+	ipcMain.handle('viking:getSettings', () => ({ llm: { ...config.llm }, hotkeys: { ...config.hotkeys }, theme: config.theme, growth: config.growth }));
 	ipcMain.handle('viking:getModels', getGatewayModels);
 	ipcMain.handle('viking:saveSettings', (e, s: Persisted) => {
 		const prevOpen = config.hotkeys.open;
@@ -268,7 +276,7 @@ app.whenReady().then(() => {
 			registerOpen();
 		}
 		// Keep other windows (e.g. the overlay) live-updated; skip the sender to avoid an echo loop.
-		const snap = { llm: { ...config.llm }, hotkeys: { ...config.hotkeys }, theme: config.theme };
+		const snap = { llm: { ...config.llm }, hotkeys: { ...config.hotkeys }, theme: config.theme, growth: config.growth };
 		for (const w of BrowserWindow.getAllWindows()) if (w.webContents !== e.sender) w.webContents.send('viking:settings', snap);
 	});
 });
