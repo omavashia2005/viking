@@ -37,6 +37,7 @@ const BINDINGS: { key: keyof Hotkeys; label: string; hint: string; options: stri
   { key: 'settings', label: 'open settings', hint: 'this window', options: ['CommandOrControl+S', 'CommandOrControl+K', 'CommandOrControl+,', 'CommandOrControl+Shift+K'] },
   { key: 'close', label: 'close overlay', hint: 'ignored while typing', options: ['q', 'Escape'] },
   { key: 'copy', label: 'copy active result', hint: '⌘/ctrl + key', options: ['c', 'y', 'p'], implicitMod: true },
+  { key: 'back', label: 'back to results', hint: 'from a follow-up prompt', options: ['CommandOrControl+Shift+B', 'CommandOrControl+Shift+O', 'Alt+ArrowLeft'] },
 ];
 
 // keep a custom binding from a hand-edited config selectable
@@ -87,7 +88,7 @@ function ThemeCard({ value, selected, onSelect }: { value: Theme; selected: bool
 export default function SettingsApp(): JSX.Element {
   const [page, setPage] = useState<Page>('model'); // ⌘S used to land on the provider pane
   const [llm, setLlm] = useState<LLM>({ apiKey: '', model: '' });
-  const [hotkeys, setHotkeys] = useState<Hotkeys>({ open: '', settings: '', close: '', copy: '' });
+  const [hotkeys, setHotkeys] = useState<Hotkeys>({ open: '', settings: '', close: '', copy: '', back: '' });
   const [theme, setTheme] = useState<Theme>('onyx');
   const [saved, setSaved] = useState(false);
   const ready = useRef(false);

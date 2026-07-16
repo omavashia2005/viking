@@ -255,6 +255,8 @@ app.whenReady().then(() => {
 		win.setBounds(clampToWorkArea({ ...b, height: Math.min(Math.max(Math.ceil(height), min), max) }));
 	});
 	ipcMain.on('viking:hide', hide);
+	ipcMain.on('viking:back', () => setMode('full')); // follow-up prompt back to results: spotlight is too narrow for them
+
 	ipcMain.on('viking:openSettings', () => openSettingsWindow());
 	ipcMain.handle('viking:getSettings', () => ({ llm: { ...config.llm }, hotkeys: { ...config.hotkeys }, theme: config.theme }));
 	ipcMain.handle('viking:getModels', getGatewayModels);

@@ -37,6 +37,7 @@ declare global {
       setActive: (idx: number) => void;
       resize: (height: number) => void; // content-driven window height (both modes)
       hide: () => void;
+      back: () => void;
       openSettings: () => void;
       getSettings: () => Promise<{ llm: LLM; hotkeys: Hotkeys; theme: Theme }>;
       getModels: () => Promise<GatewayModel[]>;
@@ -53,7 +54,7 @@ export default function App(): JSX.Element {
   const [error, setError] = useState('');
   const [softError, setSoftError] = useState('');
   const [refineFrom, setRefineFrom] = useState<Option | undefined>();
-  const [hotkeys, setHotkeys] = useState<Hotkeys>({ open: '', settings: '', close: '', copy: '' });
+  const [hotkeys, setHotkeys] = useState<Hotkeys>({ open: '', settings: '', close: '', copy: '', back: '' });
   const [toolCalls, setToolCalls] = useState<ToolCallEntry[]>([]);
   const [theme, setTheme] = useState<Theme>('onyx');
   const [closing, setClosing] = useState(false);
@@ -136,6 +137,14 @@ export default function App(): JSX.Element {
       if (e.defaultPrevented) return;
       // Settings open in their own window; works while typing, like the old panes did.
       if (matchesShortcut(e, hotkeys.settings)) { e.preventDefault(); window.viking.openSettings(); return; }
+      // Back out of a follow-up prompt to the still-cached results; works while typing, like settings.
+      if (matchesShortcut(e, hotkeys.back) && phase === 'textbox' && options.length > 0) {
+        e.preventDefault();
+        window.viking.back(); // main widens the window back to full mode
+        setPhase('results');
+        setRefineFrom(undefined);
+        return;
+      }
       const t = e.target as HTMLElement | null;
       const editable = !!t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || (t as any).isContentEditable);
       const mod = e.metaKey || e.ctrlKey;
@@ -155,7 +164,7 @@ export default function App(): JSX.Element {
     };
     window.addEventListener('keydown', onKey, true);
     return () => window.removeEventListener('keydown', onKey, true);
-  }, [options, active, hotkeys]);
+  }, [options, active, hotkeys, phase]);
 
   // Spotlight-style dismiss: let overlay-out (140ms) finish before the window hides.
   function close(): void {

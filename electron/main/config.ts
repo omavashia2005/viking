@@ -8,6 +8,7 @@ export const config = {
 		settings: 'CommandOrControl+S', // window-scoped; opens the settings window
 		close: 'q',                     // window-scoped; ignored while typing in an input
 		copy: 'c',                      // window-scoped: ⌘/Ctrl + this key copies the active option
+		back: 'CommandOrControl+Shift+B', // window-scoped; returns from a follow-up prompt to the results
 	},
 	llm: {
 		apiKey: process.env.AI_GATEWAY_API_KEY ?? '',
