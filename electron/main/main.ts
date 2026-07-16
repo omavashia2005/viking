@@ -3,7 +3,7 @@ import path from 'node:path';
 import fs from 'node:fs';
 import { config } from './config';
 import { generate, type LaunchArgs } from './agent/code/llm';
-import type { Option, ReasoningProgress } from './agent/code/shared-types';
+import type { Option } from './agent/code/shared-types';
 import { closeMcpConnections, warmMcpConnections } from './agent/tools/tools';
 import type { ToolProgress } from './agent/tools/shared-types';
 import { getGatewayModels } from './agent/gateway-models';
@@ -219,7 +219,6 @@ async function run(prompt: string | undefined, refineFrom?: Option): Promise<voi
 			screenshot: screenshot ?? '',
 			launch: currentLaunch,
 			onTool: (event: ToolProgress) => win?.webContents.send('viking:tool', event),
-			onReasoning: (event: ReasoningProgress) => win?.webContents.send('viking:reasoning', event),
 		});
 		lastOptions = options;
 		activeIdx = 0;

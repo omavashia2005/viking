@@ -1,16 +1,9 @@
 import React from "react";
 import { CheckIcon, TriangleAlertIcon } from "lucide-react";
 import type {
-  ReasoningProgress,
   ToolProgress,
   ToolSummary,
 } from "@/shared-types";
-import {
-  ChainOfThought,
-  ChainOfThoughtContent,
-  ChainOfThoughtHeader,
-  ChainOfThoughtStep,
-} from "@/src/components/ai-elements/chain-of-thought";
 import {
   Task,
   TaskContent,
@@ -142,10 +135,8 @@ function Summary({ summary }: { summary?: ToolSummary }): JSX.Element | null {
 
 export function ToolCallLog({
   calls,
-  reasoning,
 }: {
   calls: ToolCallEntry[];
-  reasoning: ReasoningProgress[];
 }): JSX.Element {
   const [elapsed, setElapsed] = React.useState(0);
 
@@ -154,7 +145,7 @@ export function ToolCallLog({
     return () => window.clearInterval(timer);
   }, []);
 
-  if (calls.length === 0 && reasoning.length === 0) {
+  if (calls.length === 0) {
     return (
       <Task defaultOpen className="mx-auto mt-[100px] max-w-sm" role="status">
         <TaskTrigger title="Thinking" />
@@ -207,24 +198,5 @@ export function ToolCallLog({
     </Task>
   );
 
-  if (reasoning.length === 0) return <>{toolTask}</>;
-
-  return (
-    <ChainOfThought defaultOpen>
-      <ChainOfThoughtHeader>
-        {calls.length > 0 ? "Reasoning and tools" : "Reasoning"}
-      </ChainOfThoughtHeader>
-      <ChainOfThoughtContent>
-        {reasoning.map((step, index) => (
-          <ChainOfThoughtStep
-            key={step.id}
-            label={<span className="whitespace-pre-wrap">{step.text}</span>}
-            status={index === reasoning.length - 1 ? "active" : "complete"}
-          />
-        ))}
-        {toolTask}
-        {calls.length === 0 && <ToolActivity elapsed={elapsed} />}
-      </ChainOfThoughtContent>
-    </ChainOfThought>
-  );
+  return <>{toolTask}</>;
 }

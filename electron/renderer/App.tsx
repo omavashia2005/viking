@@ -1,5 +1,5 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import type { GatewayModel, Option, ReasoningProgress, ToolProgress } from '@/shared-types';
+import type { GatewayModel, Option, ToolProgress } from '@/shared-types';
 import { CodeView } from './components/CodeView';
 import { ErrorView } from './components/ErrorView';
 import { SoftAlert } from './components/SoftAlert';
@@ -55,7 +55,6 @@ export default function App(): JSX.Element {
   const [refineFrom, setRefineFrom] = useState<Option | undefined>();
   const [hotkeys, setHotkeys] = useState<Hotkeys>({ open: '', settings: '', close: '', copy: '' });
   const [toolCalls, setToolCalls] = useState<ToolCallEntry[]>([]);
-  const [reasoning, setReasoning] = useState<ReasoningProgress[]>([]);
   const [theme, setTheme] = useState<Theme>('onyx');
   const [closing, setClosing] = useState(false);
   const hideTimer = useRef<number>();
@@ -70,14 +69,13 @@ export default function App(): JSX.Element {
     window.viking.on('viking:show', ({ mode, refineFrom }: { mode: 'textbox' | 'followup'; refineFrom?: Option }) => {
       console.log('[viking] show', mode);
       clearTimeout(hideTimer.current); setClosing(false); // reopened mid-close: cancel the pending hide
-      setError(''); setSoftError(''); setPrompt(''); setToolCalls([]); setReasoning([]);
+      setError(''); setSoftError(''); setPrompt(''); setToolCalls([]);
       setPhase('textbox');
       setRefineFrom(mode === 'followup' ? refineFrom : undefined);
       setTimeout(() => inputRef.current?.focus(), 50);
     });
-    window.viking.on('viking:loading', () => { setSoftError(''); setToolCalls([]); setReasoning([]); setPhase('loading'); });
+    window.viking.on('viking:loading', () => { setSoftError(''); setToolCalls([]); setPhase('loading'); });
     window.viking.on('viking:tool', (event: ToolProgress) => setToolCalls(prev => mergeToolCall(prev, event)));
-    window.viking.on('viking:reasoning', (event: ReasoningProgress) => setReasoning(prev => [...prev, event]));
     window.viking.on('viking:result', (p: { options: Option[]; error?: string; softError?: string }) => {
       setToolCalls([]);
       if (p.error) { setError(p.error); setPhase('error'); return; }
@@ -107,7 +105,7 @@ export default function App(): JSX.Element {
   useEffect(() => {
     const el = logRef.current;
     if (phase === 'loading' && el) el.scrollTop = el.scrollHeight;
-  }, [phase, reasoning, toolCalls]);
+  }, [phase, toolCalls]);
 
   useEffect(() => {
     const el = logRef.current;
@@ -191,7 +189,7 @@ export default function App(): JSX.Element {
 
       {phase === 'loading' && (
         <div className="toollog" ref={logRef}>
-          <ToolCallLog calls={toolCalls} reasoning={reasoning} />
+          <ToolCallLog calls={toolCalls} />
         </div>
       )}
 
