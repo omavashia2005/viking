@@ -2,8 +2,10 @@
    setting data-theme on <html>. :root is the default theme (onyx). */
 
 /* onyx — black and monochrome; the accent is pure white so
-   highlights read as brightness, not hue */
-:root {
+   highlights read as brightness, not hue.
+   Also addressable as [data-theme="onyx"] so a scoped element (settings theme
+   preview cards) can opt back into onyx while acid is active on <html>. */
+:root, [data-theme="onyx"] {
   --background: transparent;
   --foreground: #f2f2f2;
   --card: #000000;

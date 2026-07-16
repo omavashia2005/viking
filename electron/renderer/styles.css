@@ -105,6 +105,15 @@
 .errmsg { color: var(--foreground); font-size: 15px; font-weight: 300; line-height: 1.5; white-space: pre-wrap; }
 .errhint { color: var(--muted-foreground); font-size: 11px; margin-top: auto; }
 
+/* settings window content column */
+.spage { scrollbar-gutter: stable; overscroll-behavior: contain; }
+.spage::-webkit-scrollbar { width: 6px; height: 6px; }
+.spage::-webkit-scrollbar-track { background: transparent; }
+.spage::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--foreground) 14%, transparent); border-radius: 3px; }
+.spage::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--foreground) 32%, transparent); }
+
 /* soft alert — lives above content, ignores drag */
 .alert { position: fixed; right: 16px; bottom: 24px; z-index: 20;
   max-width: 340px; display: flex; align-items: flex-start; gap: 10px;
