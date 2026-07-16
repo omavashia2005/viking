@@ -6,7 +6,7 @@ import { THEMES, type Hotkeys, type LLM, type Theme } from './components/types';
 import { Input } from './components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './components/ui/select';
 
-const PAGES = ['appearance', 'model', 'keybindings'] as const;
+const PAGES = ['model', 'appearance', 'keybindings'] as const;
 type Page = (typeof PAGES)[number];
 
 const MICRO = 'text-[10.5px] lowercase tracking-[0.16em] text-muted-foreground';
@@ -158,15 +158,6 @@ export default function SettingsApp(): JSX.Element {
         </nav>
 
         <main className="spage min-h-0 flex-1 overflow-y-auto px-10 py-9">
-          {page === 'appearance' && (
-            <section className="flex max-w-xl flex-col gap-8">
-              <PageHead title="appearance" sub="themes apply to the overlay and this window, instantly" />
-              <div className="flex flex-wrap gap-4">
-                {THEMES.map(t => <ThemeCard key={t} value={t} selected={t === theme} onSelect={() => setTheme(t)} />)}
-              </div>
-            </section>
-          )}
-
           {page === 'model' && (
             <section className="flex max-w-xl flex-col gap-8">
               <PageHead title="model" sub="the model that answers, and the key that pays for it" />
@@ -183,6 +174,15 @@ export default function SettingsApp(): JSX.Element {
                 />
                 <span className="text-[10px] lowercase text-muted-foreground">stored locally in viking-settings.json</span>
               </label>
+            </section>
+          )}
+
+          {page === 'appearance' && (
+            <section className="flex max-w-xl flex-col gap-8">
+              <PageHead title="appearance" sub="themes apply to the overlay and this window, instantly" />
+              <div className="flex flex-wrap gap-4">
+                {THEMES.map(t => <ThemeCard key={t} value={t} selected={t === theme} onSelect={() => setTheme(t)} />)}
+              </div>
             </section>
           )}
 
