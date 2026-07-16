@@ -7,6 +7,7 @@ contextBridge.exposeInMainWorld('viking', {
 	expand: () => ipcRenderer.send('viking:expand'),
 	resize: (height: number) => ipcRenderer.send('viking:resize', height),
 	hide: () => ipcRenderer.send('viking:hide'),
+	openSettings: () => ipcRenderer.send('viking:openSettings'),
 	getSettings: () => ipcRenderer.invoke('viking:getSettings'),
 	getModels: () => ipcRenderer.invoke('viking:getModels'),
 	saveSettings: (s: { llm?: object; hotkeys?: object; theme?: string }) => ipcRenderer.invoke('viking:saveSettings', s),

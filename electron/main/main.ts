@@ -49,7 +49,11 @@ function loadSettings(): void {
 	try {
 		const j: Persisted = JSON.parse(fs.readFileSync(settingsFile(), 'utf8'));
 		if (j.llm) Object.assign(config.llm, j.llm);
-		if (j.hotkeys) Object.assign(config.hotkeys, j.hotkeys);
+		if (j.hotkeys) {
+			delete (j.hotkeys as { home?: string }).home; // ponytail: 'home' hotkey removed; persisted files would resurrect it
+			if (j.hotkeys.settings === 'CommandOrControl+K') delete j.hotkeys.settings; // ponytail: old default; drop so the new ⌘S default applies
+			Object.assign(config.hotkeys, j.hotkeys);
+		}
 		if (j.theme) config.theme = j.theme;
 	} catch { }
 }
@@ -127,6 +131,28 @@ function createWindow(): BrowserWindow {
 	w0.webContents.on('preload-error', (_e, p, err) => console.error('[viking] preload error:', p, err));
 	w0.webContents.on('did-fail-load', (_e, code, desc) => console.error('[viking] load failed:', code, desc));
 	return w0;
+}
+
+let settingsWin: BrowserWindow | null = null;
+function openSettingsWindow(): void {
+	if (settingsWin) {
+		settingsWin.show();
+		settingsWin.focus();
+		return;
+	}
+	settingsWin = new BrowserWindow({
+		width: 960, height: 680,
+		minWidth: 760, minHeight: 560,
+		resizable: true,
+		title: 'viking settings',
+		titleBarStyle: 'hiddenInset',
+		trafficLightPosition: { x: 16, y: 16 },
+		backgroundColor: '#0a0a0a',
+		webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true },
+	});
+	settingsWin.loadFile('public/index.html', { query: { view: 'settings' } });
+	if (process.env.VIKING_DEVTOOLS) settingsWin.webContents.openDevTools({ mode: 'detach' });
+	settingsWin.on('closed', () => { settingsWin = null; });
 }
 
 async function captureScreen(): Promise<string | undefined> {
@@ -228,15 +254,19 @@ app.whenReady().then(() => {
 		win.setBounds({ ...b, height: Math.min(Math.max(Math.ceil(height), SIZES.spotlight.h), 300) });
 	});
 	ipcMain.on('viking:hide', hide);
+	ipcMain.on('viking:openSettings', () => openSettingsWindow());
 	ipcMain.handle('viking:getSettings', () => ({ llm: { ...config.llm }, hotkeys: { ...config.hotkeys }, theme: config.theme }));
 	ipcMain.handle('viking:getModels', getGatewayModels);
-	ipcMain.handle('viking:saveSettings', (_e, s: Persisted) => {
+	ipcMain.handle('viking:saveSettings', (e, s: Persisted) => {
 		const prevOpen = config.hotkeys.open;
 		saveSettings(s);
 		if (s.hotkeys?.open && s.hotkeys.open !== prevOpen) {
 			globalShortcut.unregister(prevOpen);
 			registerOpen();
 		}
+		// Keep other windows (e.g. the overlay) live-updated; skip the sender to avoid an echo loop.
+		const snap = { llm: { ...config.llm }, hotkeys: { ...config.hotkeys }, theme: config.theme };
+		for (const w of BrowserWindow.getAllWindows()) if (w.webContents !== e.sender) w.webContents.send('viking:settings', snap);
 	});
 });
 

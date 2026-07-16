@@ -5,8 +5,7 @@ import path from 'node:path';
 export const config = {
 	hotkeys: {
 		open: 'CommandOrControl+L', // global; opens a prompt (or follow-up if results visible)
-		settings: 'CommandOrControl+K', // window-scoped; opens settings (⌘S also works)
-		home: 'CommandOrControl+Shift+I', // window-scoped; returns from settings to the active query/results
+		settings: 'CommandOrControl+S', // window-scoped; opens the settings window
 		close: 'q',                     // window-scoped; ignored while typing in an input
 		copy: 'c',                      // window-scoped: ⌘/Ctrl + this key copies the active option
 	},
