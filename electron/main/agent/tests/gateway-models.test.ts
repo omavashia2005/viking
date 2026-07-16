@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { parseGatewayModels } from './gateway-models';
+import { parseGatewayModels } from '../gateway-models';
 
 const models = parseGatewayModels({
 	data: [

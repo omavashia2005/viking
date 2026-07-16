@@ -1,12 +1,12 @@
 import { app, BrowserWindow, globalShortcut, ipcMain, screen, desktopCapturer, nativeImage } from 'electron';
 import path from 'node:path';
 import fs from 'node:fs';
-import { config } from './agent/config';
-import { generate, type LaunchArgs } from './agent/llm';
-import type { Option, ReasoningProgress } from './agent/shared-types';
+import { config } from './config';
+import { generate, type LaunchArgs } from './code/llm';
+import type { Option, ReasoningProgress } from './code/shared-types';
 import { closeMcpConnections, warmMcpConnections } from './agent/tools/tools';
 import type { ToolProgress } from './agent/tools/shared-types';
-import { getGatewayModels } from './gateway-models';
+import { getGatewayModels } from './agent/gateway-models';
 
 // Caller passes the payload after '--args'. Chromium/Electron may inject its
 // own flags between '--args' and our payload, so skip flag-shaped tokens and
@@ -166,7 +166,7 @@ function hide(): void {
 function friendly(err: Error): string {
 	const m = err.message ?? String(err);
 	if (!config.llm.apiKey) return 'No API key. Open model settings (⌘S) and enter an AI Gateway API key.';
-	if (/ENOENT/.test(m) && /fff-mcp/.test(m)) return `fff-mcp not found at ${config.mcp.fff.command}. Install it, or edit electron/main/agent/config.ts -> mcp.fff.command.`;
+	if (/ENOENT/.test(m) && /fff-mcp/.test(m)) return `fff-mcp not found at ${config.mcp.fff.command}. Install it, or edit electron/main/config.ts -> mcp.fff.command.`;
 	if (/401|invalid_api_key|Incorrect API key|Unauthenticated/i.test(m)) return 'AI Gateway rejected the API key. Check it in model settings (⌘S).';
 	if (/ENOTFOUND|ECONNREFUSED|fetch failed/i.test(m)) return 'Could not reach Vercel AI Gateway. Check your connection.';
 	if (/model.+(not_found|does not exist)/i.test(m)) return `Model "${config.llm.model}" is unavailable. Choose another model in settings (⌘S).`;

@@ -1,10 +1,10 @@
 import fs from 'node:fs';
 import { createGateway, generateText, isLoopFinished, NoObjectGeneratedError, Output, type UserContent } from 'ai';
-import { config } from './config';
+import { config } from '../config';
 import { LLMResponse, type Option, type ReasoningProgress } from './shared-types';
 import { prompts, type Context } from './prompts';
-import { buildTools, toolSummary } from './tools/tools';
-import { ToolOutput, type ToolProgress } from './tools/shared-types';
+import { buildTools, toolSummary } from '../agent/tools/tools';
+import { ToolOutput, type ToolProgress } from '../agent/tools/shared-types';
 
 export type LaunchArgs = { cwd?: string; activeFile?: string };
 type GenerateToolProgressCallback = (event: ToolProgress) => void;

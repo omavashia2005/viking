@@ -3,7 +3,7 @@ import { tool, type FlexibleSchema, type Tool } from 'ai';
 import fs from 'node:fs';
 import path from 'node:path';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
-import { config } from '../config';
+import { config } from '../../config';
 import {
 	GetLibraryDocsArgs,
 	QueryArgs,
