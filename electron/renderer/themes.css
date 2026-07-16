@@ -29,6 +29,32 @@
   --radius: 0.5rem;
 }
 
+/* ivory — warm paper and near-black ink; primary is the ink itself so
+   highlights read as weight, mirroring onyx where they read as brightness.
+   Grays are alpha-black over warm paper, so they stay warm, never blue.
+   No --background: the frameless overlay needs :root's transparent. */
+[data-theme="ivory"] {
+  --foreground: #1a1a18;
+  --card: #f6f4ee;
+  --card-foreground: #1a1a18;
+  --popover: #fffdf8;
+  --popover-foreground: #1a1a18;
+  --primary: #1a1a18;
+  --primary-foreground: #fffdf8;
+  --secondary: rgba(26, 26, 24, 0.06);
+  --secondary-foreground: #1a1a18;
+  --muted: rgba(26, 26, 24, 0.06);
+  --muted-foreground: rgba(26, 26, 24, 0.6);
+  --accent: rgba(26, 26, 24, 0.06);
+  --accent-foreground: #1a1a18;
+  --destructive: #a3271f;
+  --destructive-foreground: #fffdf8;
+  --warning: #8a5a00;
+  --border: rgba(26, 26, 24, 0.12);
+  --input: rgba(26, 26, 24, 0.16);
+  --ring: #1a1a18;
+}
+
 /* acid — warm cream on black, with an acid-green accent */
 [data-theme="acid"] {
   --foreground: #f4f1ea;
