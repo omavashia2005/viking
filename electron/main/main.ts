@@ -2,8 +2,8 @@ import { app, BrowserWindow, globalShortcut, ipcMain, screen, desktopCapturer, n
 import path from 'node:path';
 import fs from 'node:fs';
 import { config } from './config';
-import { generate, type LaunchArgs } from './agent/code/generate';
-import type { Option, ToolProgress } from './agent/code/shared-types';
+import { generate, type LaunchArgs } from './agent/llm';
+import type { Option } from './agent/code/shared-types';
 import { closeMcpConnections, warmMcpConnections } from './agent/tools/utils';
 import { getGatewayModels } from './agent/gateway-models';
 
@@ -217,12 +217,14 @@ async function run(prompt: string | undefined, refineFrom?: Option): Promise<voi
 	win?.webContents.send('viking:loading');
 	const screenshot = await captureScreen();
 	try {
-		const { options, reasoning, softError } = await generate({
+		const { output, reasoning, softError } = await generate({
+			type: 'code',
 			userPrompt: buildPrompt(prompt, refineFrom) ?? '',
 			screenshot: screenshot ?? '',
 			launch: currentLaunch,
-			onTool: (event: ToolProgress) => win?.webContents.send('viking:tool', event),
+			onTool: event => win?.webContents.send('viking:tool', event),
 		});
+		const options = output?.options ?? [];
 		lastOptions = options;
 		activeIdx = 0;
 		win?.webContents.send('viking:result', { options, reasoning, softError });

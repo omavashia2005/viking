@@ -1,4 +1,6 @@
-export type Context = {
+import fs from 'node:fs';
+
+type Context = {
 	userPrompt?: string;
 	codebase: string;
 };
@@ -42,3 +44,14 @@ Set "startLine" to null only if you called read_file on the target and it genuin
 		return parts.join('\n\n');
 	},
 };
+
+export function buildCodePrompt(userPrompt: string, activeFile?: string): string {
+	let activeFileSnippet = '';
+	if (activeFile) {
+		try { activeFileSnippet = fs.readFileSync(activeFile, 'utf8').split('\n').slice(0, 200).join('\n'); } catch { }
+	}
+	return prompts.user({
+		userPrompt,
+		codebase: activeFileSnippet ? `Active file (${activeFile}), lines 1-200:\n${activeFileSnippet}` : '',
+	});
+}
