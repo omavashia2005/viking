@@ -147,16 +147,9 @@ export function ToolCallLog({
 
   if (calls.length === 0) {
     return (
-      <Task defaultOpen className="mx-auto mt-[100px] max-w-sm" role="status">
-        <TaskTrigger title="Thinking" />
-        <TaskContent>
-          <TaskItem className="flex items-center gap-2">
-            <Spinner className="text-primary" />
-            Gathering context and querying the model
-          </TaskItem>
-          <ToolActivity elapsed={elapsed} />
-        </TaskContent>
-      </Task>
+      <div className="mx-auto mt-[100px] max-w-sm" role="status">
+        <ToolActivity elapsed={elapsed} />
+      </div>
     );
   }
 
