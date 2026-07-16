@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { ToolProgress as SharedToolProgress } from '../shared-types';
 
 export const CodeLanguage = z.enum([
 	'rust',
@@ -30,14 +31,48 @@ export type Option = z.infer<typeof Option>;
 export const LLMResponse = z.object({ options: z.array(Option).min(1) });
 export type LLMResponse = z.infer<typeof LLMResponse>;
 
-export const ReasoningProgress = z.object({
-	id: z.number().int().nonnegative(),
-	text: z.string().min(1),
-});
-export type ReasoningProgress = z.infer<typeof ReasoningProgress>;
+export const QueryArgs = z.object({ query: z.string() }).passthrough();
+export type QueryArgs = z.infer<typeof QueryArgs>;
 
-export type GatewayModel = {
-	id: string;
-	name: string;
-	provider: string;
-};
+export const ReadFileArgs = z.object({
+	path: z.string(),
+	startLine: z.number().optional(),
+	endLine: z.number().optional(),
+}).passthrough();
+export type ReadFileArgs = z.infer<typeof ReadFileArgs>;
+
+export const ResolveLibraryArgs = z.object({ libraryName: z.string() });
+export type ResolveLibraryArgs = z.infer<typeof ResolveLibraryArgs>;
+
+export const GetLibraryDocsArgs = z.object({ libraryId: z.string(), topic: z.string() });
+export type GetLibraryDocsArgs = z.infer<typeof GetLibraryDocsArgs>;
+
+export const ToolSummary = z.discriminatedUnion('type', [
+	z.object({
+		type: z.literal('search'),
+		query: z.string(),
+		preview: z.array(z.string()).optional(),
+		lineCount: z.number().int().nonnegative().optional(),
+	}),
+	z.object({
+		type: z.literal('read_file'),
+		path: z.string(),
+		startLine: z.number().optional(),
+		endLine: z.number().optional(),
+	}),
+	z.object({
+		type: z.literal('library'),
+		libraryName: z.string().optional(),
+		libraryId: z.string().optional(),
+		topic: z.string().optional(),
+		preview: z.array(z.string()).optional(),
+	}),
+	z.object({
+		type: z.literal('raw'),
+		args: z.record(z.unknown()).optional(),
+		preview: z.array(z.string()).optional(),
+	}),
+]);
+export type ToolSummary = z.infer<typeof ToolSummary>;
+
+export type ToolProgress = SharedToolProgress<ToolSummary>;

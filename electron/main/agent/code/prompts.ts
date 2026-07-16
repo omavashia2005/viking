@@ -1,9 +1,6 @@
 export type Context = {
 	userPrompt?: string;
-	language: string;
-	docs: string;
 	codebase: string;
-	screenshot?: string;
 };
 
 type PromptUser = (context: Context) => string;
@@ -41,7 +38,6 @@ Set "startLine" to null only if you called read_file on the target and it genuin
 		const parts: string[] = [];
 		if (ctx.userPrompt) parts.push(`Request:\n${ctx.userPrompt}`);
 		else parts.push(`No explicit prompt. Infer the desired snippet from the screenshot and the surrounding code.`);
-		if (ctx.docs) parts.push(`Relevant docs:\n${ctx.docs.slice(0, 4000)}`);
 		if (ctx.codebase) parts.push(`Relevant code from the user's project:\n${ctx.codebase.slice(0, 4000)}`);
 		return parts.join('\n\n');
 	},

@@ -1,4 +1,4 @@
-import type { GatewayModel } from './code/shared-types';
+import type { GatewayModel } from './shared-types';
 
 const MODELS_URL = 'https://ai-gateway.vercel.sh/v1/models';
 let cachedModels: Promise<GatewayModel[]> | undefined;

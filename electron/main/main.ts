@@ -2,10 +2,9 @@ import { app, BrowserWindow, globalShortcut, ipcMain, screen, desktopCapturer, n
 import path from 'node:path';
 import fs from 'node:fs';
 import { config } from './config';
-import { generate, type LaunchArgs } from './agent/code/llm';
-import type { Option } from './agent/code/shared-types';
-import { closeMcpConnections, warmMcpConnections } from './agent/tools/tools';
-import type { ToolProgress } from './agent/tools/shared-types';
+import { generate, type LaunchArgs } from './agent/code/generate';
+import type { Option, ToolProgress } from './agent/code/shared-types';
+import { closeMcpConnections, warmMcpConnections } from './agent/tools/utils';
 import { getGatewayModels } from './agent/gateway-models';
 
 // Caller passes the payload after '--args'. Chromium/Electron may inject its

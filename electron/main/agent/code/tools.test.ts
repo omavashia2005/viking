@@ -2,17 +2,18 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { mcpConnectionPool, resolveReadPath, warmMcpConnections } from './tools';
+import { resolveReadPath } from './tools';
+import { mcpConnectionPool, warmMcpConnections } from '../tools/utils';
 
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'viking-read-file-'));
 try {
 	fs.mkdirSync(path.join(root, '.git'));
-	fs.mkdirSync(path.join(root, 'electron/main/agent'), { recursive: true });
-	const file = path.join(root, 'electron/main/agent/tools.ts');
+	fs.mkdirSync(path.join(root, 'electron/main/agent/code'), { recursive: true });
+	const file = path.join(root, 'electron/main/agent/code/tools.ts');
 	fs.writeFileSync(file, 'ok');
 
 	assert.equal(
-		resolveReadPath(path.join(root, 'electron/main'), 'electron/main/agent/tools.ts'),
+		resolveReadPath(path.join(root, 'electron/main'), 'electron/main/agent/code/tools.ts'),
 		file,
 	);
 } finally {
