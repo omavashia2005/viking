@@ -11,7 +11,7 @@ import {
   TaskTrigger,
 } from "@/electron/renderer/components/ai-elements/task";
 import { Shimmer } from "@/electron/renderer/components/ai-elements/shimmer";
-import { Spinner } from "./ui/spinner";
+import { Spinner } from "@/electron/renderer/components/ui/spinner";
 
 export type ToolCallEntry = ToolProgress;
 

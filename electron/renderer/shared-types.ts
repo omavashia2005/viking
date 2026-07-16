@@ -1,4 +1,3 @@
-export type Phase = 'hidden' | 'textbox' | 'loading' | 'results' | 'error';
 export const THEMES = ['onyx', 'acid', 'ivory'] as const;
 export type Theme = (typeof THEMES)[number];
 export type LLM = { apiKey: string; model: string };

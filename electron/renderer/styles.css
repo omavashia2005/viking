@@ -38,7 +38,7 @@
 
 /* overlay chrome — unlayered on purpose so these rules win over utility classes,
    matching the old inline-<style> cascade */
-/* natural height: content drives the window size (App.tsx reports it via ResizeObserver) */
+/* natural height: content drives the window size (agent/code/App.tsx reports it via ResizeObserver) */
 .overlay, .spot { display: flex; flex-direction: column;
   background: var(--card);
   border: 1px solid var(--border); border-radius: 18px; overflow: hidden;

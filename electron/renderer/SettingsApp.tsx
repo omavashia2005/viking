@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ModelPicker } from './components/ModelPicker';
-import { THEMES, type Hotkeys, type LLM, type Theme } from './components/types';
+import { THEMES, type Hotkeys, type LLM, type Theme } from './shared-types';
 import { Input } from './components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './components/ui/select';
 

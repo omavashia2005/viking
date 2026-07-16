@@ -1,13 +1,14 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { GatewayModel, Option, ToolProgress } from '@/shared-types';
 import { CodeView } from './components/CodeView';
-import { ErrorView } from './components/ErrorView';
-import { SoftAlert } from './components/SoftAlert';
 import { Spotlight } from './components/Spotlight';
 import { TitleBar } from './components/TitleBar';
+import { ErrorView } from '@/electron/renderer/components/ErrorView';
+import { SoftAlert } from '@/electron/renderer/components/SoftAlert';
+import { Tabs, TabsContent } from '@/electron/renderer/components/ui/tabs';
+import { THEMES, type Hotkeys, type LLM, type Theme } from '../../shared-types';
+import type { Phase } from './shared-types';
 import { ToolCallLog, type ToolCallEntry } from './components/ToolCallLog';
-import { THEMES, type Hotkeys, type LLM, type Phase, type Theme } from './components/types';
-import { Tabs, TabsContent } from './components/ui/tabs';
 
 function mergeToolCall(prev: ToolCallEntry[], event: ToolProgress): ToolCallEntry[] {
   const i = prev.findIndex(t => t.id === event.id);
@@ -46,7 +47,7 @@ declare global {
   }
 }
 
-export default function App(): JSX.Element {
+export default function CodeAgentApp(): JSX.Element {
   const [phase, setPhase] = useState<Phase>('hidden');
   const [options, setOptions] = useState<Option[]>([]);
   const [active, setActive] = useState(0);

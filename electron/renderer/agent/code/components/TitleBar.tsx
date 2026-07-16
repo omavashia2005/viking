@@ -1,7 +1,7 @@
 import React from 'react';
 import type { Option } from '@/shared-types';
-import { TabsList, TabsTrigger } from './ui/tabs';
-import type { Phase } from './types';
+import { TabsList, TabsTrigger } from '@/electron/renderer/components/ui/tabs';
+import type { Phase } from '../shared-types';
 
 export function TitleBar({ phase, options }: {
   phase: Phase;
