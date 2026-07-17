@@ -46,9 +46,9 @@ npm run release:patch
 ```
 
 The tag workflow builds Apple Silicon DMG/ZIP and Windows x64 NSIS/ZIP artifacts,
-uploads the updater manifests, and creates the GitHub Release. macOS requires
-`CSC_LINK`, `CSC_KEY_PASSWORD`, and either the three `APPLE_API_*` secrets or
-`APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, and `APPLE_TEAM_ID`.
+uploads the updater manifests, and creates the GitHub Release. Builds are unsigned:
+macOS users must override Gatekeeper on first launch, Windows users see an unknown
+publisher warning, and macOS auto-update is disabled.
 
 ## Hotkeys
 
