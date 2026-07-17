@@ -6,6 +6,7 @@ import { generate, type LaunchArgs } from './agent/llm';
 import type { Option } from './agent/code/shared-types';
 import { closeMcpConnections, warmMcpConnections } from './agent/tools/utils';
 import { getGatewayModels } from './agent/gateway-models';
+import { normalizeLaunchSource } from '../../setup/ides/types';
 
 // Caller passes the payload after '--args'. Chromium/Electron may inject its
 // own flags between '--args' and our payload, so skip flag-shaped tokens and
@@ -14,7 +15,7 @@ function parseLaunchArgs(argv: string[]): LaunchArgs {
 	const i = argv.indexOf('--args');
 	if (i < 0) return { source: 'general' };
 	const tail = argv.slice(i + 1).filter(a => !a.startsWith('-')).slice(-3);
-	return { cwd: tail[0], activeFile: tail[1], source: tail[2] };
+	return { cwd: tail[0], activeFile: tail[1], source: normalizeLaunchSource(tail[2]) };
 }
 
 let currentLaunch: LaunchArgs = parseLaunchArgs(process.argv);
@@ -168,7 +169,7 @@ async function captureScreen(): Promise<string | undefined> {
 }
 
 function show(mode: 'textbox' | 'followup', refineFrom?: Option): void {
-	console.log('[viking] show request:', { mode, hasWindow: !!win, rendererReady, cwd: currentLaunch.cwd, activeFile: currentLaunch.activeFile });
+	console.log('[viking] show request:', { mode, source: currentLaunch.source, hasWindow: !!win, rendererReady, cwd: currentLaunch.cwd, activeFile: currentLaunch.activeFile });
 	if (!win) win = createWindow();
 	if (!rendererReady) {
 		console.log('[viking] show queued until renderer is ready');
@@ -217,20 +218,18 @@ async function run(prompt: string | undefined, refineFrom?: Option): Promise<voi
 	win?.webContents.send('viking:loading');
 	const screenshot = await captureScreen();
 	try {
-		console.log(currentLaunch.source);
-		if (currentLaunch.source === "neovim" || currentLaunch.source == "vscode"){
-			const { output, reasoning, softError } = await generate({
-				agentType: 'code',
-				userPrompt: buildPrompt(prompt, refineFrom) ?? '',
-				screenshot: screenshot ?? '',
-				launch: currentLaunch,
-				onTool: event => win?.webContents.send('viking:tool', event),
-			});
-			const options = output?.options ?? [];
-			lastOptions = options;
-			activeIdx = 0;
-			win?.webContents.send('viking:result', { options, reasoning, softError });
-		}
+		console.log('[viking] run:', { source: currentLaunch.source, cwd: currentLaunch.cwd || config.cwd, hasActiveFile: !!currentLaunch.activeFile });
+		const { output, reasoning, softError } = await generate({
+			agentType: 'code',
+			userPrompt: buildPrompt(prompt, refineFrom) ?? '',
+			screenshot: screenshot ?? '',
+			launch: currentLaunch,
+			onTool: event => win?.webContents.send('viking:tool', event),
+		});
+		const options = output?.options ?? [];
+		lastOptions = options;
+		activeIdx = 0;
+		win?.webContents.send('viking:result', { options, reasoning, softError });
 	} catch (e) {
 		win?.webContents.send('viking:result', { options: [], error: friendly(e as Error) });
 	}
@@ -241,10 +240,17 @@ app.whenReady().then(() => {
 	loadSettings();
 	win = createWindow();
 
-	const registerOpen = () => globalShortcut.register(config.hotkeys.open, () => {
-		if (lastOptions.length && win?.isVisible()) show('followup', lastOptions[activeIdx]);
-		else show('textbox');
-	});
+	const registerOpen = () => {
+		const accelerator = config.hotkeys.open;
+		const registered = globalShortcut.register(accelerator, () => {
+			const followup = lastOptions.length > 0 && !!win?.isVisible();
+			if (!followup) currentLaunch = { source: 'general' };
+			console.log('[viking] global shortcut invoked:', { accelerator, mode: followup ? 'followup' : 'textbox', source: currentLaunch.source });
+			if (followup) show('followup', lastOptions[activeIdx]);
+			else show('textbox');
+		});
+		console.log('[viking] global shortcut registration:', { accelerator, registered });
+	};
 	registerOpen();
 	// close is window-scoped (handled in renderer keydown) — registering 'q' globally would steal it system-wide.
 

@@ -1,5 +1,13 @@
+export const ideIds = ['neovim', 'vscode'] as const;
+export type IdeId = (typeof ideIds)[number];
+export type LaunchSource = IdeId | 'general';
+
+export function normalizeLaunchSource(source?: string): LaunchSource {
+	return ideIds.find(id => id === source) ?? 'general';
+}
+
 export interface Ide {
-	id: string;
+	id: IdeId;
 	name: string;
 	// null = no config detected on this machine; setup skips gracefully.
 	locateConfig(): { dir: string; entryFile: string } | null;

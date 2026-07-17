@@ -11,7 +11,7 @@ import { LLMResponse } from './code/shared-types';
 import { buildCodePrompt, prompts as codePrompts } from './code/prompts';
 import { buildCodeTools, toolSummary as codeToolSummary } from './code/tools';
 import type { ReasoningProgress, ToolProgress } from './shared-types';
-import { Ide } from "../../../setup/ides/types";
+import type { LaunchSource } from '../../../setup/ides/types';
 
 let gateway: ReturnType<typeof createGateway> | undefined;
 let gatewayApiKey: string | undefined;
@@ -24,7 +24,7 @@ export function getGateway(): ReturnType<typeof createGateway> {
 	return gateway;
 }
 
-export type LaunchArgs = { cwd?: string; activeFile?: string ; source: Ide["name"] | "general"};
+export type LaunchArgs = { cwd?: string; activeFile?: string; source: LaunchSource };
 
 const agents = {
 	code: {
