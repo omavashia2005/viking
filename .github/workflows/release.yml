@@ -1,0 +1,113 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  macos:
+    runs-on: macos-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+
+      - name: Validate signing and notarization secrets
+        env:
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          if [ -z "${CSC_LINK:-}" ] || [ -z "${CSC_KEY_PASSWORD:-}" ]; then
+            echo "::error::Configure CSC_LINK and CSC_KEY_PASSWORD before publishing a macOS release."
+            exit 1
+          fi
+          api_key_ready=false
+          apple_id_ready=false
+          [ -n "${APPLE_API_KEY:-}" ] && [ -n "${APPLE_API_KEY_ID:-}" ] && [ -n "${APPLE_API_ISSUER:-}" ] && api_key_ready=true
+          [ -n "${APPLE_ID:-}" ] && [ -n "${APPLE_APP_SPECIFIC_PASSWORD:-}" ] && [ -n "${APPLE_TEAM_ID:-}" ] && apple_id_ready=true
+          if [ "$api_key_ready" != true ] && [ "$apple_id_ready" != true ]; then
+            echo "::error::Configure either the three APPLE_API_* secrets or APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD, and APPLE_TEAM_ID."
+            exit 1
+          fi
+
+      - name: Build unpacked app
+        run: npm run pack:mac
+
+      - name: Smoke test unpacked app
+        run: npm run smoke:packaged:mac -- release/mac-arm64/Viking.app
+
+      - name: Build signed and notarized artifacts
+        env:
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: npm run dist:mac
+
+      - name: Publish macOS assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG_NAME: ${{ github.ref_name }}
+        run: |
+          version="${TAG_NAME#v}"
+          assets=(
+            "release/Viking-${version}-arm64.dmg#Viking macOS installer (Apple Silicon)"
+            "release/Viking-${version}-arm64.zip#Viking macOS app archive (Apple Silicon)"
+          )
+          for manifest in release/latest-mac.yml release/latest-mac-arm64.yml; do
+            [ -f "$manifest" ] && assets+=("$manifest")
+          done
+          gh release view "$TAG_NAME" >/dev/null 2>&1 ||
+            gh release create "$TAG_NAME" --verify-tag --generate-notes --latest ||
+            gh release view "$TAG_NAME" >/dev/null
+          gh release upload "$TAG_NAME" "${assets[@]}" --clobber
+
+  windows:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+
+      - name: Build Windows artifacts
+        run: npm run dist:win
+
+      - name: Publish Windows assets
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG_NAME: ${{ github.ref_name }}
+        run: |
+          version="${TAG_NAME#v}"
+          assets=(
+            "release/Viking-${version}-x64.exe#Viking Windows installer (x64)"
+            "release/Viking-${version}-x64.zip#Viking Windows app archive (x64)"
+            "release/latest.yml"
+          )
+          gh release view "$TAG_NAME" >/dev/null 2>&1 ||
+            gh release create "$TAG_NAME" --verify-tag --generate-notes --latest ||
+            gh release view "$TAG_NAME" >/dev/null
+          gh release upload "$TAG_NAME" "${assets[@]}" --clobber

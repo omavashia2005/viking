@@ -28,6 +28,28 @@ export VIKING_CWD=/path/to/your/project         # codebase fff greps against
 npm start
 ```
 
+## Desktop releases
+
+Inspect local packages with `npm run pack` or `npm run pack:mac`; build installers with
+`npm run dist`, `npm run dist:mac`, or `npm run dist:win`.
+
+Prepare a version commit on a short-lived branch:
+
+```sh
+npm run release:prepare:patch # or :minor / :major
+```
+
+Merge that branch into `main`, sync local `main`, then publish the tag:
+
+```sh
+npm run release:patch
+```
+
+The tag workflow builds Apple Silicon DMG/ZIP and Windows x64 NSIS/ZIP artifacts,
+uploads the updater manifests, and creates the GitHub Release. macOS requires
+`CSC_LINK`, `CSC_KEY_PASSWORD`, and either the three `APPLE_API_*` secrets or
+`APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, and `APPLE_TEAM_ID`.
+
 ## Hotkeys
 
 | key       | what it does                                                |
