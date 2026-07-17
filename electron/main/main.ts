@@ -9,12 +9,12 @@ import { getGatewayModels } from './agent/gateway-models';
 
 // Caller passes the payload after '--args'. Chromium/Electron may inject its
 // own flags between '--args' and our payload, so skip flag-shaped tokens and
-// take the trailing two positionals.
+// take the trailing three positionals.
 function parseLaunchArgs(argv: string[]): LaunchArgs {
 	const i = argv.indexOf('--args');
-	if (i < 0) return {};
-	const tail = argv.slice(i + 1).filter(a => !a.startsWith('-')).slice(-2);
-	return { cwd: tail[0], activeFile: tail[1] };
+	if (i < 0) return { source: 'general' };
+	const tail = argv.slice(i + 1).filter(a => !a.startsWith('-')).slice(-3);
+	return { cwd: tail[0], activeFile: tail[1], source: tail[2] };
 }
 
 let currentLaunch: LaunchArgs = parseLaunchArgs(process.argv);
@@ -217,17 +217,20 @@ async function run(prompt: string | undefined, refineFrom?: Option): Promise<voi
 	win?.webContents.send('viking:loading');
 	const screenshot = await captureScreen();
 	try {
-		const { output, reasoning, softError } = await generate({
-			agentType: 'code',
-			userPrompt: buildPrompt(prompt, refineFrom) ?? '',
-			screenshot: screenshot ?? '',
-			launch: currentLaunch,
-			onTool: event => win?.webContents.send('viking:tool', event),
-		});
-		const options = output?.options ?? [];
-		lastOptions = options;
-		activeIdx = 0;
-		win?.webContents.send('viking:result', { options, reasoning, softError });
+		console.log(currentLaunch.source);
+		if (currentLaunch.source === "neovim" || currentLaunch.source == "vscode"){
+			const { output, reasoning, softError } = await generate({
+				agentType: 'code',
+				userPrompt: buildPrompt(prompt, refineFrom) ?? '',
+				screenshot: screenshot ?? '',
+				launch: currentLaunch,
+				onTool: event => win?.webContents.send('viking:tool', event),
+			});
+			const options = output?.options ?? [];
+			lastOptions = options;
+			activeIdx = 0;
+			win?.webContents.send('viking:result', { options, reasoning, softError });
+		}
 	} catch (e) {
 		win?.webContents.send('viking:result', { options: [], error: friendly(e as Error) });
 	}

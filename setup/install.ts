@@ -2,7 +2,7 @@ import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { ides } from './ides';
-import pluginTemplate from './ides/neovim.plugin.lua';
+import pluginTemplate from './ides/neovim/neovim.plugin.lua';
 
 // __dirname at runtime is the bundled output dir (dist/); repo root is its parent.
 const REPO_ROOT = path.resolve(__dirname, '..');
@@ -64,7 +64,7 @@ function moveOldNvimStub(configDir: string): void {
 }
 
 function main(): void {
-	runBuild();
+	if (!process.argv.includes('--plugin-only')) runBuild();
 	const appPath = resolveAppPath();
 
 	// ponytail: first registered IDE wins. UI-side this is neovim-only; the array is the extension seam.

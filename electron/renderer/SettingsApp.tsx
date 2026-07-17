@@ -39,7 +39,7 @@ const withCurrent = (value: string, options: string[]): string[] =>
 const CAP = 'h-7 min-w-[30px] shrink-0 justify-center gap-0 rounded border-border bg-secondary px-1.5 py-0 font-mono text-[11px] [&_svg]:hidden';
 
 // One keycap-shaped dropdown: glyph in the cap, glyph (+ name for modifiers) in the menu.
-function KeySelect({ value, options, onChange, ariaLabel }: { value: string; options: string[]; onChange: (v: string) => void; ariaLabel: string }): JSX.Element {
+function KeySelect({ value, options, onChange, ariaLabel }: { value: string; options: string[]; onChange: (v: string) => void; ariaLabel: string }): React.ReactNode {
   return (
     <Select value={value} onValueChange={onChange}>
       <SelectTrigger className={CAP} aria-label={ariaLabel}>
@@ -59,7 +59,7 @@ function KeySelect({ value, options, onChange, ariaLabel }: { value: string; opt
 
 // Per-key editor for an accelerator string: one dropdown per '+'-part, main key last.
 // min 2 / max 3 keys; +/− add and remove modifier slots.
-function AccelEditor({ value, label, onChange }: { value: string; label: string; onChange: (v: string) => void }): JSX.Element {
+function AccelEditor({ value, label, onChange }: { value: string; label: string; onChange: (v: string) => void }): React.ReactNode {
   const parts = value.split('+');
   const mods = parts.slice(0, -1);
   const main = parts[parts.length - 1];
@@ -70,7 +70,7 @@ function AccelEditor({ value, label, onChange }: { value: string; label: string;
     <div className="flex shrink-0 items-center gap-1">
       {mods.map((m, i) => (
         <KeySelect
-          key={i}
+          key={m}
           value={m}
           options={withCurrent(m, MODS.filter(x => x === m || !mods.includes(x)))}
           onChange={v => swap(i, v)}
@@ -93,7 +93,7 @@ function AccelEditor({ value, label, onChange }: { value: string; label: string;
   );
 }
 
-function PageHead({ title, sub }: { title: string; sub: string }): JSX.Element {
+function PageHead({ title, sub }: { title: string; sub: string }): React.ReactNode {
   return (
     <header className="flex flex-col gap-1.5 border-b border-border pb-5">
       <h1 className="m-0 text-[14px] font-medium lowercase tracking-[0.22em]">{title}</h1>
@@ -104,7 +104,7 @@ function PageHead({ title, sub }: { title: string; sub: string }): JSX.Element {
 
 // A live miniature of the overlay, painted with the candidate theme's own tokens
 // via the local data-theme scope. Click to apply.
-function ThemeCard({ value, selected, onSelect }: { value: Theme; selected: boolean; onSelect: () => void }): JSX.Element {
+function ThemeCard({ value, selected, onSelect }: { value: Theme; selected: boolean; onSelect: () => void }): React.ReactNode {
   return (
     <button
       type="button"
@@ -134,7 +134,7 @@ function ThemeCard({ value, selected, onSelect }: { value: Theme; selected: bool
   );
 }
 
-export default function SettingsApp(): JSX.Element {
+export default function SettingsApp(): React.ReactNode {
   const [page, setPage] = useState<Page>('model'); // ⌘S used to land on the provider pane
   const [llm, setLlm] = useState<LLM>({ apiKey: '', model: '' });
   const [hotkeys, setHotkeys] = useState<Hotkeys>({ open: '', settings: '', close: '', copy: '', back: '' });

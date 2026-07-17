@@ -27,7 +27,7 @@ export function ModelPicker({
 }: {
   value: string;
   onChange: (model: string) => void;
-}): JSX.Element {
+}): React.ReactNode {
   const [open, setOpen] = useState(false);
   const [models, setModels] = useState<GatewayModel[]>([]);
   const [loading, setLoading] = useState(true);

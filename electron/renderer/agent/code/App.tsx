@@ -47,7 +47,7 @@ declare global {
   }
 }
 
-export default function CodeAgentApp(): JSX.Element {
+export default function CodeAgentApp(): React.ReactNode {
   const [phase, setPhase] = useState<Phase>('hidden');
   const [options, setOptions] = useState<Option[]>([]);
   const [active, setActive] = useState(0);
@@ -204,7 +204,7 @@ export default function CodeAgentApp(): JSX.Element {
       )}
 
       {phase === 'results' && options.map((option, i) => (
-        <TabsContent key={i} value={String(i)} className="flex min-h-0">
+        <TabsContent key={`${option.file}:${option.startLine}:${option.label}:${option.code}`} value={String(i)} className="flex min-h-0">
           <CodeView option={option} />
         </TabsContent>
       ))}

@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import type { Ide } from './types';
+import type { Ide } from '../types';
 
 function nvimDir(): string {
 	const xdg = process.env.XDG_CONFIG_HOME;

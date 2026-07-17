@@ -7,3 +7,4 @@ release/
 CLAUDE.md
 .claude
 .agents
+**/skills/react-doctor/

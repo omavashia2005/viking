@@ -26,6 +26,7 @@ import cpp from "shiki/langs/cpp.mjs";
 import go from "shiki/langs/go.mjs";
 import java from "shiki/langs/java.mjs";
 import javascript from "shiki/langs/javascript.mjs";
+import lua from "shiki/langs/lua.mjs";
 import python from "shiki/langs/python.mjs";
 import rust from "shiki/langs/rust.mjs";
 import typescript from "shiki/langs/typescript.mjs";
@@ -136,6 +137,7 @@ const CodeBlockContext = createContext<CodeBlockContextType>({
 type ShikiLanguage =
   | "rust"
   | "javascript"
+  | "lua"
   | "python"
   | "c"
   | "cpp"
@@ -148,6 +150,7 @@ const languageAliases = {
   rust: "rust",
   javascript: "javascript",
   js: "javascript",
+  lua: "lua",
   python: "python",
   py: "python",
   c: "c",
@@ -163,7 +166,7 @@ const languageAliases = {
 
 const highlighter: Promise<HighlighterCore> = createHighlighterCore({
   engine: createJavaScriptRegexEngine(),
-  langs: [rust, javascript, python, c, cpp, java, go, typescript],
+  langs: [rust, javascript, lua, python, c, cpp, java, go, typescript],
   themes: [githubLight, githubDark],
 });
 

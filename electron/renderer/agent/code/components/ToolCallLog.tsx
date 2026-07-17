@@ -38,7 +38,7 @@ const TOOL_PROGRESS_VERBS = [
   "Finishing",
 ] as const;
 
-function ToolActivity({ elapsed }: { elapsed: number }): JSX.Element {
+function ToolActivity({ elapsed }: { elapsed: number }): React.ReactNode {
   const verb = TOOL_PROGRESS_VERBS[Math.floor(elapsed / 3) % TOOL_PROGRESS_VERBS.length];
   return (
     <TaskItem
@@ -61,14 +61,14 @@ function clip(s: string): string {
   return s.length > 180 ? `${s.slice(0, 180)}...` : s;
 }
 
-function Preview({ lines }: { lines?: string[] }): JSX.Element | null {
+function Preview({ lines }: { lines?: string[] }): React.ReactNode {
   if (!lines?.length) return null;
   return (
     <span className="text-muted-foreground"> · {clip(lines.join(" | "))}</span>
   );
 }
 
-function Summary({ summary }: { summary?: ToolSummary }): JSX.Element | null {
+function Summary({ summary }: { summary?: ToolSummary }): React.ReactNode {
   if (!summary) return null;
   if (summary.type === "search") {
     return (
@@ -137,7 +137,7 @@ export function ToolCallLog({
   calls,
 }: {
   calls: ToolCallEntry[];
-}): JSX.Element {
+}): React.ReactNode {
   const [elapsed, setElapsed] = React.useState(0);
 
   React.useEffect(() => {

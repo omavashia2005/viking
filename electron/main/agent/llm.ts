@@ -11,6 +11,7 @@ import { LLMResponse } from './code/shared-types';
 import { buildCodePrompt, prompts as codePrompts } from './code/prompts';
 import { buildCodeTools, toolSummary as codeToolSummary } from './code/tools';
 import type { ReasoningProgress, ToolProgress } from './shared-types';
+import { Ide } from "../../../setup/ides/types";
 
 let gateway: ReturnType<typeof createGateway> | undefined;
 let gatewayApiKey: string | undefined;
@@ -23,7 +24,7 @@ export function getGateway(): ReturnType<typeof createGateway> {
 	return gateway;
 }
 
-export type LaunchArgs = { cwd?: string; activeFile?: string };
+export type LaunchArgs = { cwd?: string; activeFile?: string ; source: Ide["name"] | "general"};
 
 const agents = {
 	code: {
@@ -95,7 +96,7 @@ export async function generate(input: UserInput) {
 		});
 		return {
 			output: result.output,
-			reasoning: result.steps.map(step => step.reasoningText).filter(Boolean).join('\n\n') || undefined,
+			reasoning: result.steps.flatMap(step => step.reasoningText ? [step.reasoningText] : []).join('\n\n') || undefined,
 		};
 	} catch (error) {
 		if (NoObjectGeneratedError.isInstance(error)) {

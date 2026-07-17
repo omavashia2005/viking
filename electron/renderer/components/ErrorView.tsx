@@ -1,6 +1,6 @@
 import React from 'react';
 
-export function ErrorView({ message }: { message: string }): JSX.Element {
+export function ErrorView({ message }: { message: string }): React.ReactNode {
   return (
     <div className="errbody">
       <div className="errhead">something went wrong</div>

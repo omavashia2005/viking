@@ -10,7 +10,7 @@ import {
 } from "./code-block";
 import { FileIcon } from "lucide-react";
 
-export function CodeView({ option }: { option: Option }): JSX.Element {
+export function CodeView({ option }: { option: Option }): React.ReactNode {
   const parsedLanguage = CodeLanguage.safeParse(option.language);
   const language = parsedLanguage.success ? parsedLanguage.data : "text";
   const filename = option.file.split("/").pop() ?? option.file;
