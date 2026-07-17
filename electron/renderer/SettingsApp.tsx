@@ -63,7 +63,8 @@ function AccelEditor({ value, label, onChange }: { value: string; label: string;
   const parts = value.split('+');
   const mods = parts.slice(0, -1);
   const main = parts[parts.length - 1];
-  const free = MODS.filter(m => !mods.includes(m));
+  const selectedMods = new Set(mods);
+  const free = MODS.filter(m => !selectedMods.has(m));
   const swap = (i: number, v: string): void => onChange(parts.map((p, j) => (j === i ? v : p)).join('+'));
   const stepper = 'flex h-7 w-5 shrink-0 items-center justify-center rounded text-[13px] leading-none text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring';
   return (
@@ -72,7 +73,7 @@ function AccelEditor({ value, label, onChange }: { value: string; label: string;
         <KeySelect
           key={m}
           value={m}
-          options={withCurrent(m, MODS.filter(x => x === m || !mods.includes(x)))}
+          options={withCurrent(m, MODS.filter(x => x === m || !selectedMods.has(x)))}
           onChange={v => swap(i, v)}
           ariaLabel={`${label} modifier ${i + 1}`}
         />
@@ -142,20 +143,24 @@ export default function SettingsApp(): React.ReactNode {
   const [growth, setGrowth] = useState<'down' | 'up'>('down');
   const [saved, setSaved] = useState(false);
   const ready = useRef(false);
+  const skipNextSave = useRef(false);
 
   useEffect(() => {
     if (!window.viking) {
       console.error('[viking] preload bridge missing — window.viking is undefined. Check preload path / contextIsolation.');
       return;
     }
+    let active = true;
     window.viking.getSettings().then(s => {
+      if (!active) return;
+      skipNextSave.current = true;
       setLlm(s.llm);
       setHotkeys(s.hotkeys);
       if (THEMES.includes(s.theme)) setTheme(s.theme);
       setGrowth(s.growth === 'up' ? 'up' : 'down');
-      // mark ready after the populated state has flushed, so the autosave effect skips the load
-      setTimeout(() => { ready.current = true; }, 0);
+      ready.current = true;
     });
+    return () => { active = false; };
   }, []);
 
   useEffect(() => { document.documentElement.dataset.theme = theme; }, [theme]);
@@ -163,12 +168,24 @@ export default function SettingsApp(): React.ReactNode {
   // Autosave on change; main broadcasts 'viking:settings' to the other windows.
   useEffect(() => {
     if (!ready.current) return;
+    if (skipNextSave.current) {
+      skipNextSave.current = false;
+      return;
+    }
     let cancelled = false;
+    let savedTimer: ReturnType<typeof setTimeout> | undefined;
     const t = setTimeout(async () => {
       await window.viking.saveSettings({ llm, hotkeys, theme, growth });
-      if (!cancelled) { setSaved(true); setTimeout(() => setSaved(false), 1200); }
+      if (!cancelled) {
+        setSaved(true);
+        savedTimer = setTimeout(() => setSaved(false), 1200);
+      }
     }, 250);
-    return () => { cancelled = true; clearTimeout(t); };
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+      if (savedTimer !== undefined) clearTimeout(savedTimer);
+    };
   }, [llm, hotkeys, theme, growth]);
 
   return (

@@ -1,4 +1,4 @@
-import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useReducer, useRef, useState } from 'react';
 import type { GatewayModel, Option, ToolProgress } from '@/shared-types';
 import { CodeView } from './components/CodeView';
 import { Spotlight } from './components/Spotlight';
@@ -18,6 +18,73 @@ function mergeToolCall(prev: ToolCallEntry[], event: ToolProgress): ToolCallEntr
   return next;
 }
 
+type ResultPayload = { options: Option[]; error?: string; softError?: string };
+
+type AgentState = {
+  phase: Phase;
+  options: Option[];
+  active: number;
+  prompt: string;
+  error: string;
+  softError: string;
+  refineFrom?: Option;
+  toolCalls: ToolCallEntry[];
+  closing: boolean;
+};
+
+type AgentAction =
+  | { type: 'show'; refineFrom?: Option }
+  | { type: 'loading' }
+  | { type: 'tool'; event: ToolProgress }
+  | { type: 'result'; payload: ResultPayload }
+  | { type: 'reset' }
+  | { type: 'back' }
+  | { type: 'setActive'; active: number }
+  | { type: 'setPrompt'; prompt: string }
+  | { type: 'dismissSoftError' }
+  | { type: 'close' };
+
+export const initialAgentState: AgentState = {
+  phase: 'hidden',
+  options: [],
+  active: 0,
+  prompt: '',
+  error: '',
+  softError: '',
+  refineFrom: undefined,
+  toolCalls: [],
+  closing: false,
+};
+
+export function agentReducer(state: AgentState, action: AgentAction): AgentState {
+  switch (action.type) {
+    case 'show':
+      return { ...state, phase: 'textbox', error: '', softError: '', prompt: '', toolCalls: [], refineFrom: action.refineFrom, closing: false };
+    case 'loading':
+      return { ...state, phase: 'loading', softError: '', toolCalls: [] };
+    case 'tool':
+      return { ...state, toolCalls: mergeToolCall(state.toolCalls, action.event) };
+    case 'result': {
+      const { options, error, softError } = action.payload;
+      if (error) return { ...state, phase: 'error', error, toolCalls: [] };
+      if (softError && options.length === 0) return { ...state, phase: 'textbox', softError, toolCalls: [] };
+      return { ...state, phase: 'results', options, active: 0, softError: softError ?? state.softError, toolCalls: [] };
+    }
+    case 'reset':
+      return { ...state, phase: 'hidden', closing: false };
+    case 'back':
+      return { ...state, phase: 'results', refineFrom: undefined };
+    case 'setActive':
+      return { ...state, active: action.active };
+    case 'setPrompt':
+      return { ...state, prompt: action.prompt };
+    case 'dismissSoftError':
+      return { ...state, softError: '' };
+    case 'close':
+      return { ...state, closing: true };
+  }
+}
+
 export function matchesShortcut(e: KeyboardEvent, shortcut: string | undefined, implicitMod = false): boolean {
   if (!shortcut) return false;
   const parts = shortcut.toLowerCase().split('+');
@@ -33,7 +100,7 @@ export function matchesShortcut(e: KeyboardEvent, shortcut: string | undefined, 
 declare global {
   interface Window {
     viking: {
-      on: (ch: string, fn: (...a: any[]) => void) => void;
+      receive: (ch: string, fn: (...a: any[]) => void) => () => void;
       submit: (p: { prompt: string; refineFrom?: Option }) => void;
       setActive: (idx: number) => void;
       resize: (height: number) => void; // content-driven window height (both modes)
@@ -48,17 +115,10 @@ declare global {
 }
 
 export default function CodeAgentApp(): React.ReactNode {
-  const [phase, setPhase] = useState<Phase>('hidden');
-  const [options, setOptions] = useState<Option[]>([]);
-  const [active, setActive] = useState(0);
-  const [prompt, setPrompt] = useState('');
-  const [error, setError] = useState('');
-  const [softError, setSoftError] = useState('');
-  const [refineFrom, setRefineFrom] = useState<Option | undefined>();
+  const [state, dispatch] = useReducer(agentReducer, initialAgentState);
+  const { phase, options, active, prompt, error, softError, refineFrom, toolCalls, closing } = state;
   const [hotkeys, setHotkeys] = useState<Hotkeys>({ open: '', settings: '', close: '', copy: '', back: '' });
-  const [toolCalls, setToolCalls] = useState<ToolCallEntry[]>([]);
   const [theme, setTheme] = useState<Theme>('onyx');
-  const [closing, setClosing] = useState(false);
   const hideTimer = useRef<number>();
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const logRef = useRef<HTMLDivElement>(null);
@@ -68,35 +128,46 @@ export default function CodeAgentApp(): React.ReactNode {
       console.error('[viking] preload bridge missing — window.viking is undefined. Check preload path / contextIsolation.');
       return;
     }
-    window.viking.on('viking:show', ({ mode, refineFrom }: { mode: 'textbox' | 'followup'; refineFrom?: Option }) => {
+    let lifecycleActive = true;
+    let focusTimer: ReturnType<typeof setTimeout> | undefined;
+    const focusInput = () => {
+      if (focusTimer !== undefined) clearTimeout(focusTimer);
+      focusTimer = setTimeout(() => inputRef.current?.focus(), 50);
+    };
+    const offShow = window.viking.receive('viking:show', ({ mode, refineFrom }: { mode: 'textbox' | 'followup'; refineFrom?: Option }) => {
       console.log('[viking] show', mode);
-      clearTimeout(hideTimer.current); setClosing(false); // reopened mid-close: cancel the pending hide
-      setError(''); setSoftError(''); setPrompt(''); setToolCalls([]);
-      setPhase('textbox');
-      setRefineFrom(mode === 'followup' ? refineFrom : undefined);
-      setTimeout(() => inputRef.current?.focus(), 50);
+      clearTimeout(hideTimer.current);
+      dispatch({ type: 'show', refineFrom: mode === 'followup' ? refineFrom : undefined });
+      focusInput();
     });
-    window.viking.on('viking:loading', () => { setSoftError(''); setToolCalls([]); setPhase('loading'); });
-    window.viking.on('viking:tool', (event: ToolProgress) => setToolCalls(prev => mergeToolCall(prev, event)));
-    window.viking.on('viking:result', (p: { options: Option[]; error?: string; softError?: string }) => {
-      setToolCalls([]);
-      if (p.error) { setError(p.error); setPhase('error'); return; }
-      if (p.softError) {
-        setSoftError(p.softError);
-        if (p.options.length === 0) { setPhase('textbox'); setTimeout(() => inputRef.current?.focus(), 50); return; }
-      }
-      setOptions(p.options); setActive(0); setPhase('results');
+    const offLoading = window.viking.receive('viking:loading', () => dispatch({ type: 'loading' }));
+    const offTool = window.viking.receive('viking:tool', (event: ToolProgress) => dispatch({ type: 'tool', event }));
+    const offResult = window.viking.receive('viking:result', (p: ResultPayload) => {
+      dispatch({ type: 'result', payload: p });
+      if (p.softError && p.options.length === 0) focusInput();
     });
-    window.viking.on('viking:reset', () => { setPhase('hidden'); setClosing(false); });
+    const offReset = window.viking.receive('viking:reset', () => dispatch({ type: 'reset' }));
     // settings live in their own window now; mirror whatever it saves.
-    window.viking.on('viking:settings', (p: { llm: LLM; hotkeys: Hotkeys; theme: Theme }) => {
+    const offSettings = window.viking.receive('viking:settings', (p: { llm: LLM; hotkeys: Hotkeys; theme: Theme }) => {
       setHotkeys(p.hotkeys);
       if (THEMES.includes(p.theme)) setTheme(p.theme);
     });
     window.viking.getSettings().then(s => {
+      if (!lifecycleActive) return;
       setHotkeys(s.hotkeys);
       if (THEMES.includes(s.theme)) setTheme(s.theme);
     });
+    return () => {
+      lifecycleActive = false;
+      offShow();
+      offLoading();
+      offTool();
+      offResult();
+      offReset();
+      offSettings();
+      if (focusTimer !== undefined) clearTimeout(focusTimer);
+      if (hideTimer.current !== undefined) clearTimeout(hideTimer.current);
+    };
   }, []);
 
   useEffect(() => { document.documentElement.dataset.theme = theme; }, [theme]);
@@ -129,7 +200,7 @@ export default function CodeAgentApp(): React.ReactNode {
   // Auto-dismiss the soft alert after ~5s. Timer resets whenever a new softError arrives.
   useEffect(() => {
     if (!softError) return;
-    const t = setTimeout(() => setSoftError(''), 5000);
+    const t = setTimeout(() => dispatch({ type: 'dismissSoftError' }), 5000);
     return () => clearTimeout(t);
   }, [softError]);
 
@@ -142,8 +213,7 @@ export default function CodeAgentApp(): React.ReactNode {
       if (matchesShortcut(e, hotkeys.back) && phase === 'textbox' && options.length > 0) {
         e.preventDefault();
         window.viking.back(); // main widens the window back to full mode
-        setPhase('results');
-        setRefineFrom(undefined);
+        dispatch({ type: 'back' });
         return;
       }
       const t = e.target as HTMLElement | null;
@@ -154,7 +224,7 @@ export default function CodeAgentApp(): React.ReactNode {
       if (editable && e.key === 'Escape') return close();
       if (mod && /^[1-9]$/.test(e.key)) {
         const i = +e.key - 1;
-        if (i < options.length) setActive(i);
+        if (i < options.length) dispatch({ type: 'setActive', active: i });
         return;
       }
       if (matchesShortcut(e, hotkeys.copy, true) && options[active]) {
@@ -169,13 +239,13 @@ export default function CodeAgentApp(): React.ReactNode {
 
   // Spotlight-style dismiss: let overlay-out (140ms) finish before the window hides.
   function close(): void {
-    setClosing(true);
+    dispatch({ type: 'close' });
     hideTimer.current = window.setTimeout(() => window.viking.hide(), 150);
   }
 
   if (phase === 'hidden') return <div style={{ display: 'none' }} />;
 
-  const alertEl = <SoftAlert message={softError} onDismiss={() => setSoftError('')} />;
+  const alertEl = <SoftAlert message={softError} onDismiss={() => dispatch({ type: 'dismissSoftError' })} />;
 
   // Spotlight layout for textbox / follow-up phase
   if (phase === 'textbox') {
@@ -184,7 +254,7 @@ export default function CodeAgentApp(): React.ReactNode {
         prompt={prompt}
         refineFrom={refineFrom}
         inputRef={inputRef}
-        onChange={setPrompt}
+        onChange={prompt => dispatch({ type: 'setPrompt', prompt })}
         onSubmit={() => { if (prompt.trim()) window.viking.submit({ prompt: prompt.trim(), refineFrom }); }}
         className={closing ? 'closing' : undefined}
       >
@@ -194,7 +264,7 @@ export default function CodeAgentApp(): React.ReactNode {
   }
 
   return (
-    <Tabs value={String(active)} onValueChange={value => setActive(Number(value))} className={closing ? 'overlay gap-0 closing' : 'overlay gap-0'}>
+    <Tabs value={String(active)} onValueChange={value => dispatch({ type: 'setActive', active: Number(value) })} className={closing ? 'overlay gap-0 closing' : 'overlay gap-0'}>
       {phase !== 'loading' && <TitleBar phase={phase} options={options} />}
 
       {phase === 'loading' && (

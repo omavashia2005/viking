@@ -1,7 +1,11 @@
 import { contextBridge, ipcRenderer } from 'electron';
 
 contextBridge.exposeInMainWorld('viking', {
-	on: (ch: string, fn: (...a: unknown[]) => void) => ipcRenderer.on(ch, (_e, ...a) => fn(...a)),
+	receive: (ch: string, fn: (...a: unknown[]) => void) => {
+		const listener = (_e: unknown, ...a: unknown[]) => fn(...a);
+		ipcRenderer.on(ch, listener);
+		return () => ipcRenderer.removeListener(ch, listener);
+	},
 	submit: (payload: { prompt: string; refineFrom?: unknown }) => ipcRenderer.send('viking:submit', payload),
 	setActive: (idx: number) => ipcRenderer.send('viking:setActive', idx),
 	resize: (height: number) => ipcRenderer.send('viking:resize', height),
