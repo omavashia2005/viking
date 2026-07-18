@@ -1,6 +1,8 @@
-import { app, BrowserWindow, globalShortcut, ipcMain, screen, desktopCapturer, nativeImage } from 'electron';
+import { app, BrowserWindow, globalShortcut, ipcMain, screen, desktopCapturer, nativeImage, powerMonitor } from 'electron';
+import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import fs from 'node:fs';
+import { autoUpdater } from 'electron-updater';
 import { config } from './config';
 import { agentTypeForSource, generate, type LaunchArgs } from './agent/llm';
 import type { Option } from './agent/code/shared-types';
@@ -23,6 +25,7 @@ function parseLaunchArgs(argv: string[]): LaunchArgs {
 }
 
 let currentLaunch: LaunchArgs = parseLaunchArgs(process.argv);
+const smokeTest = process.argv.includes('--smoke-test');
 console.log('[viking] process argv:', process.argv);
 console.log('[viking] launch args:', currentLaunch);
 
@@ -36,7 +39,7 @@ function warmLaunchConnections(launch: LaunchArgs): void {
 
 if (!app.requestSingleInstanceLock()) {
 	app.quit();
-} else {
+} else if (!smokeTest) {
 	warmLaunchConnections(currentLaunch);
 	app.on('second-instance', (_e, argv) => {
 		console.log('[viking] second-instance argv:', argv);
@@ -269,9 +272,66 @@ async function run(prompt: string | undefined, refineFrom?: Option): Promise<voi
 	}
 }
 
+const UPDATE_CHECK_INTERVAL_MS = 30 * 60 * 1000;
+const UPDATE_CHECK_MIN_GAP_MS = 5 * 60 * 1000;
+let updateCheckInFlight = false;
+let lastUpdateCheckAt = 0;
+
+function macBundleIsSigned(): boolean {
+	if (process.platform !== 'darwin') return true;
+	const result = spawnSync('/usr/bin/codesign', ['-dv', '--verbose=4', process.execPath], { encoding: 'utf8' });
+	const details = `${result.stdout || ''}\n${result.stderr || ''}`;
+	const team = details.match(/^TeamIdentifier=(.+)$/m)?.[1]?.trim();
+	return result.status === 0 && !!team && team !== 'not set';
+}
+
+async function maybeCheckForUpdates(reason: string): Promise<void> {
+	if (!app.isPackaged || updateCheckInFlight || Date.now() - lastUpdateCheckAt < UPDATE_CHECK_MIN_GAP_MS) return;
+	updateCheckInFlight = true;
+	lastUpdateCheckAt = Date.now();
+	console.log(`[viking] checking for updates (${reason})`);
+	try {
+		await autoUpdater.checkForUpdates();
+	} catch (error) {
+		console.error('[viking] update check failed:', error);
+	} finally {
+		updateCheckInFlight = false;
+	}
+}
+
+function startAutoUpdates(): void {
+	if (!app.isPackaged) return;
+	if (!macBundleIsSigned()) {
+		console.warn('[viking] auto-update disabled: macOS app is not signed with a TeamIdentifier');
+		return;
+	}
+
+	autoUpdater.logger = console;
+	autoUpdater.autoDownload = true;
+	autoUpdater.autoInstallOnAppQuit = true;
+	autoUpdater.on('update-available', info => console.log(`[viking] update available: ${info.version}`));
+	autoUpdater.on('update-downloaded', info => console.log(`[viking] update downloaded: ${info.version}; installing on quit`));
+	autoUpdater.on('error', error => console.error('[viking] updater error:', error));
+
+	setTimeout(() => void maybeCheckForUpdates('startup'), 10_000).unref();
+	setInterval(() => void maybeCheckForUpdates('interval'), UPDATE_CHECK_INTERVAL_MS).unref();
+	app.on('activate', () => void maybeCheckForUpdates('activate'));
+	powerMonitor.on('resume', () => void maybeCheckForUpdates('resume'));
+}
+
 app.whenReady().then(() => {
 	console.log('[viking] app ready');
 	loadSettings();
+	if (smokeTest) {
+		ipcMain.handle('viking:getSettings', () => ({ llm: { ...config.llm }, hotkeys: { ...config.hotkeys }, theme: config.theme, growth: config.growth }));
+		win = createWindow();
+		win.webContents.once('did-finish-load', () => {
+			console.log('VIKING_SMOKE_OK');
+			app.exit(0);
+		});
+		return;
+	}
+
 	win = createWindow();
 
 	const registerOpen = () => {
@@ -335,6 +395,8 @@ app.whenReady().then(() => {
 		};
 		for (const w of BrowserWindow.getAllWindows()) if (w.webContents !== e.sender) w.webContents.send('viking:settings', snap);
 	});
+
+	startAutoUpdates();
 });
 
 app.on('will-quit', () => {

@@ -33,6 +33,28 @@ Exa web search.
 npm start
 ```
 
+## Desktop releases
+
+Inspect local packages with `npm run pack` or `npm run pack:mac`; build installers with
+`npm run dist`, `npm run dist:mac`, or `npm run dist:win`.
+
+Prepare a version commit on a short-lived branch:
+
+```sh
+npm run release:prepare:patch # or :minor / :major
+```
+
+Merge that branch into `main`, sync local `main`, then publish the tag:
+
+```sh
+npm run release:patch
+```
+
+The tag workflow builds Apple Silicon DMG/ZIP and Windows x64 NSIS/ZIP artifacts,
+uploads the updater manifests, and creates the GitHub Release. Builds are unsigned:
+macOS users must override Gatekeeper on first launch, Windows users see an unknown
+publisher warning, and macOS auto-update is disabled.
+
 ## Hotkeys
 
 | key       | what it does                                                |

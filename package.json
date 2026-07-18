@@ -1,12 +1,37 @@
 {
   "name": "viking",
-  "version": "0.1.0",
+  "version": "0.1.2",
+  "private": true,
+  "description": "Floating AI coding assistant for macOS and Windows",
+  "author": "omavashia",
+  "repository": "github:omavashia2005/viking",
   "main": "dist/main.js",
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "start": "npm run build && concurrently \"npm run watch\" \"electron . --viking-dev\"",
     "watch": "concurrently \"esbuild electron/main/main.ts --bundle --platform=node --external:electron --outfile=dist/main.js --format=cjs --watch\" \"esbuild electron/main/preload.ts --bundle --platform=node --external:electron --outfile=dist/preload.js --format=cjs --watch\" \"esbuild electron/renderer/renderer.tsx --bundle --outfile=dist/renderer.js --watch --loader:.js=jsx --define:process.env.NODE_ENV='\\\"development\\\"'\" \"tailwindcss -i electron/renderer/styles.css -o dist/tailwind.css --watch\"",
     "build": "esbuild electron/main/main.ts --bundle --platform=node --external:electron --outfile=dist/main.js --format=cjs && esbuild electron/main/preload.ts --bundle --platform=node --external:electron --outfile=dist/preload.js --format=cjs && esbuild electron/renderer/renderer.tsx --bundle --outfile=dist/renderer.js --loader:.js=jsx --define:process.env.NODE_ENV='\"development\"' && tailwindcss -i electron/renderer/styles.css -o dist/tailwind.css",
     "dist": "npm run build && electron-builder --mac --dir",
+    "start": "npm run build && concurrently \"npm run watch\" \"electron .\"",
+    "watch": "concurrently \"esbuild electron/main/main.ts --bundle --platform=node --external:electron --external:electron-updater --outfile=dist/main.js --format=cjs --watch\" \"esbuild electron/main/preload.ts --bundle --platform=node --external:electron --outfile=dist/preload.js --format=cjs --watch\" \"esbuild electron/renderer/renderer.tsx --bundle --outfile=dist/renderer.js --watch --loader:.js=jsx --define:process.env.NODE_ENV='\\\"development\\\"'\" \"tailwindcss -i electron/renderer/styles.css -o dist/tailwind.css --watch\"",
+    "build": "esbuild electron/main/main.ts --bundle --platform=node --external:electron --external:electron-updater --outfile=dist/main.js --format=cjs && esbuild electron/main/preload.ts --bundle --platform=node --external:electron --outfile=dist/preload.js --format=cjs && esbuild electron/renderer/renderer.tsx --bundle --outfile=dist/renderer.js --loader:.js=jsx --define:process.env.NODE_ENV='\"development\"' && tailwindcss -i electron/renderer/styles.css -o dist/tailwind.css",
+    "pack": "npm run build && node scripts/run-electron-builder.mjs --dir --publish never",
+    "pack:mac": "npm run build && node scripts/run-electron-builder.mjs --dir --mac --arm64 --publish never",
+    "smoke:packaged:mac": "node scripts/smoke-packaged-mac.mjs",
+    "dist": "npm run build && node scripts/run-electron-builder.mjs --publish never",
+    "dist:mac": "npm run build && node scripts/run-electron-builder.mjs --mac --arm64 --publish never",
+    "dist:win": "npm run build && node scripts/run-electron-builder.mjs --win --x64 --publish never",
+    "release": "node scripts/release.mjs",
+    "release:patch": "node scripts/release.mjs patch",
+    "release:minor": "node scripts/release.mjs minor",
+    "release:major": "node scripts/release.mjs major",
+    "release:prepare": "node scripts/release.mjs --prepare",
+    "release:prepare:patch": "node scripts/release.mjs patch --prepare",
+    "release:prepare:minor": "node scripts/release.mjs minor --prepare",
+    "release:prepare:major": "node scripts/release.mjs major --prepare",
+    "release:dry-run": "node scripts/release.mjs --dry-run",
     "setup:build": "esbuild setup/install.ts --bundle --platform=node --loader:.lua=text --outfile=dist/setup.js --format=cjs",
     "setup:plugin": "npm run setup:build && node dist/setup.js --plugin-only",
     "setup": "npm run setup:build && node dist/setup.js",
@@ -21,6 +46,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
+    "electron-updater": "^6.8.9",
     "lucide-react": "^1.24.0",
     "motion": "^12.42.2",
     "radix-ui": "^1.6.2",
@@ -39,26 +65,10 @@
     "@types/react-dom": "^18.2.0",
     "concurrently": "^8.2.0",
     "electron": "^27.0.0",
-    "electron-builder": "^24.13.3",
+    "electron-builder": "^26.15.3",
     "esbuild": "^0.19.0",
     "react-doctor": "^0.7.8",
     "tailwindcss": "^4.3.2",
     "typescript": "^5.0.0"
-  },
-  "build": {
-    "appId": "com.viking.app",
-    "productName": "Viking",
-    "files": [
-      "dist/**",
-      "public/**",
-      "package.json"
-    ],
-    "mac": {
-      "target": "dir",
-      "category": "public.app-category.developer-tools"
-    },
-    "directories": {
-      "output": "release"
-    }
   }
 }
