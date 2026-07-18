@@ -10,6 +10,10 @@ import { closeMcpConnections, warmMcpConnections } from './agent/tools/utils';
 import { getGatewayModels } from './agent/gateway-models';
 import { normalizeLaunchSource } from '../../setup/ides/types';
 
+if (process.argv.includes('--viking-dev')) {
+	app.setPath('userData', path.join(app.getPath('appData'), 'viking-dev'));
+}
+
 // Caller passes the payload after '--args'. Chromium/Electron may inject its
 // own flags between '--args' and our payload, so skip flag-shaped tokens and
 // take the trailing three positionals.
@@ -48,11 +52,18 @@ if (!app.requestSingleInstanceLock()) {
 
 const settingsFile = () => path.join(app.getPath('userData'), 'viking-settings.json');
 // ponytail: plaintext api key on disk under the user's app data. Swap for keytar if shared machines matter.
-type Persisted = { llm?: Partial<typeof config.llm>; hotkeys?: Partial<typeof config.hotkeys>; theme?: string; growth?: 'down' | 'up' };
+type Persisted = {
+	llm?: Partial<typeof config.llm>;
+	connectors?: { exa?: Partial<typeof config.connectors.exa> };
+	hotkeys?: Partial<typeof config.hotkeys>;
+	theme?: string;
+	growth?: 'down' | 'up';
+};
 function loadSettings(): void {
 	try {
 		const j: Persisted = JSON.parse(fs.readFileSync(settingsFile(), 'utf8'));
 		if (j.llm) Object.assign(config.llm, j.llm);
+		if (j.connectors?.exa) Object.assign(config.connectors.exa, j.connectors.exa);
 		if (j.hotkeys) {
 			delete (j.hotkeys as { home?: string }).home; // ponytail: 'home' hotkey removed; persisted files would resurrect it
 			if (j.hotkeys.settings === 'CommandOrControl+K') delete j.hotkeys.settings; // ponytail: old default; drop so the new ⌘S default applies
@@ -64,10 +75,11 @@ function loadSettings(): void {
 }
 function saveSettings(s: Persisted): void {
 	if (s.llm) Object.assign(config.llm, s.llm);
+	if (s.connectors?.exa) Object.assign(config.connectors.exa, s.connectors.exa);
 	if (s.hotkeys) Object.assign(config.hotkeys, s.hotkeys);
 	if (s.theme) config.theme = s.theme;
 	if (s.growth) config.growth = s.growth;
-	fs.writeFileSync(settingsFile(), JSON.stringify({ llm: config.llm, hotkeys: config.hotkeys, theme: config.theme, growth: config.growth }, null, 2));
+	fs.writeFileSync(settingsFile(), JSON.stringify({ llm: config.llm, connectors: config.connectors, hotkeys: config.hotkeys, theme: config.theme, growth: config.growth }, null, 2));
 }
 
 let win: BrowserWindow | null = null;
@@ -199,7 +211,7 @@ function hide(): void {
 function friendly(err: Error): string {
 	const m = err.message ?? String(err);
 	if (!config.llm.apiKey) return 'No API key. Open model settings (⌘S) and enter an AI Gateway API key.';
-	if (/EXA_API_KEY/.test(m)) return 'No Exa API key. Set EXA_API_KEY before launching Viking.';
+	if (/EXA_API_KEY/.test(m)) return 'No Exa API key. Open settings (⌘S) → connectors and enter one.';
 	if (/Exa API error \(401\)|INVALID_API_KEY/.test(m)) return 'Exa rejected the API key. Check EXA_API_KEY and try again.';
 	if (/Exa API error \(402\)|NO_MORE_CREDITS|BUDGET_EXCEEDED/.test(m)) return 'Exa has no available credits or the API key budget was exceeded.';
 	if (/Exa API error \(429\)/.test(m)) return 'Exa rate limit reached. Wait a moment and try again.';
@@ -358,7 +370,13 @@ app.whenReady().then(() => {
 	ipcMain.on('viking:back', () => setMode('full')); // follow-up prompt back to results: spotlight is too narrow for them
 
 	ipcMain.on('viking:openSettings', () => openSettingsWindow());
-	ipcMain.handle('viking:getSettings', () => ({ llm: { ...config.llm }, hotkeys: { ...config.hotkeys }, theme: config.theme, growth: config.growth }));
+	ipcMain.handle('viking:getSettings', () => ({
+		llm: { ...config.llm },
+		connectors: { exa: { ...config.connectors.exa } },
+		hotkeys: { ...config.hotkeys },
+		theme: config.theme,
+		growth: config.growth,
+	}));
 	ipcMain.handle('viking:getModels', getGatewayModels);
 	ipcMain.handle('viking:saveSettings', (e, s: Persisted) => {
 		const prevOpen = config.hotkeys.open;
@@ -368,7 +386,13 @@ app.whenReady().then(() => {
 			registerOpen();
 		}
 		// Keep other windows (e.g. the overlay) live-updated; skip the sender to avoid an echo loop.
-		const snap = { llm: { ...config.llm }, hotkeys: { ...config.hotkeys }, theme: config.theme, growth: config.growth };
+		const snap = {
+			llm: { ...config.llm },
+			connectors: { exa: { ...config.connectors.exa } },
+			hotkeys: { ...config.hotkeys },
+			theme: config.theme,
+			growth: config.growth,
+		};
 		for (const w of BrowserWindow.getAllWindows()) if (w.webContents !== e.sender) w.webContents.send('viking:settings', snap);
 	});
 

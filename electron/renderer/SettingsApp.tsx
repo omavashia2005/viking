@@ -2,11 +2,11 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ModelPicker } from './components/ModelPicker';
-import { THEMES, type Hotkeys, type LLM, type Theme } from './shared-types';
+import { THEMES, type ConnectorSettings, type Hotkeys, type LLM, type Theme } from './shared-types';
 import { Input } from './components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './components/ui/select';
 
-const PAGES = ['model', 'appearance', 'keybindings'] as const;
+const PAGES = ['model', 'connectors', 'appearance', 'keybindings'] as const;
 type Page = (typeof PAGES)[number];
 
 const MICRO = 'text-[10.5px] lowercase tracking-[0.16em] text-muted-foreground';
@@ -103,6 +103,51 @@ function PageHead({ title, sub }: { title: string; sub: string }): React.ReactNo
   );
 }
 
+function ConnectorCard({ name, description, envName, logo, apiKey, onChange }: {
+  name: string;
+  description: string;
+  envName: string;
+  logo: string;
+  apiKey: string;
+  onChange: (apiKey: string) => void;
+}): React.ReactNode {
+  const configured = apiKey.trim().length > 0;
+  return (
+    <article className="overflow-hidden rounded-xl border border-border bg-secondary/30">
+      <header className="flex items-center gap-3 border-b border-border px-4 py-3.5">
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-white">
+          <img src={logo} alt="" className="h-6 w-5 object-contain" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-[12px] font-medium lowercase">{name}</span>
+          <span className="block truncate text-[10px] lowercase text-muted-foreground">{description}</span>
+        </span>
+        <span className={cn(
+          'rounded-full border px-2 py-1 text-[9px] lowercase tracking-[0.08em]',
+          configured ? 'border-primary/25 bg-primary/5 text-primary' : 'border-border text-muted-foreground',
+        )}>
+          {configured ? 'configured' : 'not configured'}
+        </span>
+      </header>
+      <label className="flex flex-col gap-1.5 p-4">
+        <span className={MICRO}>{envName}</span>
+        <Input
+          type="password"
+          value={apiKey}
+          onChange={e => onChange(e.target.value)}
+          placeholder={envName}
+          autoComplete="off"
+          spellCheck={false}
+          className="bg-card caret-primary"
+        />
+        <span className="text-[10px] lowercase text-muted-foreground">
+          stored locally · create a key at dashboard.exa.ai/api-keys
+        </span>
+      </label>
+    </article>
+  );
+}
+
 // A live miniature of the overlay, painted with the candidate theme's own tokens
 // via the local data-theme scope. Click to apply.
 function ThemeCard({ value, selected, onSelect }: { value: Theme; selected: boolean; onSelect: () => void }): React.ReactNode {
@@ -138,6 +183,7 @@ function ThemeCard({ value, selected, onSelect }: { value: Theme; selected: bool
 export default function SettingsApp(): React.ReactNode {
   const [page, setPage] = useState<Page>('model'); // ⌘S used to land on the provider pane
   const [llm, setLlm] = useState<LLM>({ apiKey: '', model: '' });
+  const [connectors, setConnectors] = useState<ConnectorSettings>({ exa: { apiKey: '' } });
   const [hotkeys, setHotkeys] = useState<Hotkeys>({ open: '', settings: '', close: '', copy: '', back: '' });
   const [theme, setTheme] = useState<Theme>('onyx');
   const [growth, setGrowth] = useState<'down' | 'up'>('down');
@@ -155,6 +201,7 @@ export default function SettingsApp(): React.ReactNode {
       if (!active) return;
       skipNextSave.current = true;
       setLlm(s.llm);
+      setConnectors(s.connectors);
       setHotkeys(s.hotkeys);
       if (THEMES.includes(s.theme)) setTheme(s.theme);
       setGrowth(s.growth === 'up' ? 'up' : 'down');
@@ -175,7 +222,7 @@ export default function SettingsApp(): React.ReactNode {
     let cancelled = false;
     let savedTimer: ReturnType<typeof setTimeout> | undefined;
     const t = setTimeout(async () => {
-      await window.viking.saveSettings({ llm, hotkeys, theme, growth });
+      await window.viking.saveSettings({ llm, connectors, hotkeys, theme, growth });
       if (!cancelled) {
         setSaved(true);
         savedTimer = setTimeout(() => setSaved(false), 1200);
@@ -186,7 +233,7 @@ export default function SettingsApp(): React.ReactNode {
       clearTimeout(t);
       if (savedTimer !== undefined) clearTimeout(savedTimer);
     };
-  }, [llm, hotkeys, theme, growth]);
+  }, [llm, connectors, hotkeys, theme, growth]);
 
   return (
     // --background is transparent for the overlay's sake; this window paints its own surface.
@@ -243,6 +290,20 @@ export default function SettingsApp(): React.ReactNode {
                 />
                 <span className="text-[10px] lowercase text-muted-foreground">stored locally in viking-settings.json</span>
               </label>
+            </section>
+          )}
+
+          {page === 'connectors' && (
+            <section className="flex max-w-xl flex-col gap-8">
+              <PageHead title="connectors" sub="keys for tools the general agent can call" />
+              <ConnectorCard
+                name="exa"
+                description="web search for current information"
+                envName="EXA_API_KEY"
+                logo="exa-logomark.svg"
+                apiKey={connectors.exa.apiKey}
+                onChange={apiKey => setConnectors({ exa: { apiKey } })}
+              />
             </section>
           )}
 

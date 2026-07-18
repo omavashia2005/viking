@@ -8,7 +8,7 @@ const tools = buildGeneralTools(() => webSearch);
 assert.deepEqual(Object.keys(tools), ['webSearch']);
 assert.equal(tools.webSearch, webSearch);
 
-const apiKey = config.exa.apiKey;
-config.exa.apiKey = '';
+const apiKey = config.connectors.exa.apiKey;
+config.connectors.exa.apiKey = '';
 assert.throws(() => buildGeneralTools(), /EXA_API_KEY/);
-config.exa.apiKey = apiKey;
+config.connectors.exa.apiKey = apiKey;

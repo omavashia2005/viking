@@ -107,6 +107,40 @@
 .errmsg { color: var(--foreground); font-size: 15px; font-weight: 300; line-height: 1.5; white-space: pre-wrap; }
 .errhint { color: var(--muted-foreground); font-size: 11px; margin-top: auto; }
 
+/* general-agent answer markdown */
+.search-markdown { line-height: 1.65; overflow-wrap: anywhere; }
+.search-markdown > :first-child { margin-top: 0; }
+.search-markdown > :last-child { margin-bottom: 0; }
+.search-markdown h1, .search-markdown h2, .search-markdown h3 {
+  margin: 1.25em 0 0.5em; color: var(--foreground); font-weight: 650; line-height: 1.25; }
+.search-markdown h1 { font-size: 1.35rem; }
+.search-markdown h2 { font-size: 1.15rem; }
+.search-markdown h3 { font-size: 1rem; }
+.search-markdown p, .search-markdown ul, .search-markdown ol,
+.search-markdown blockquote, .search-markdown pre, .search-markdown table {
+  margin: 0.8em 0; }
+.search-markdown ul, .search-markdown ol { padding-left: 1.5rem; }
+.search-markdown ul { list-style: disc; }
+.search-markdown ol { list-style: decimal; }
+.search-markdown li + li { margin-top: 0.25em; }
+.search-markdown a { color: var(--primary); text-decoration: underline; text-underline-offset: 3px; }
+.search-markdown strong { font-weight: 650; }
+.search-markdown blockquote {
+  padding-left: 0.9rem; border-left: 2px solid var(--border); color: var(--muted-foreground); }
+.search-markdown code {
+  padding: 0.15em 0.35em; border: 1px solid var(--border); border-radius: 4px;
+  background: var(--muted); font-family: var(--font-mono); font-size: 0.9em; }
+.search-markdown pre {
+  overflow-x: auto; padding: 0.85rem; border: 1px solid var(--border);
+  border-radius: 7px; background: var(--muted); }
+.search-markdown pre code { padding: 0; border: 0; background: transparent; font-size: 0.85rem; }
+.search-markdown hr { margin: 1.25rem 0; border: 0; border-top: 1px solid var(--border); }
+.search-markdown table { width: 100%; border-collapse: collapse; font-size: 0.9em; }
+.search-markdown th, .search-markdown td {
+  padding: 0.5rem 0.65rem; border: 1px solid var(--border); text-align: left; vertical-align: top; }
+.search-markdown th { background: var(--muted); font-weight: 650; }
+.search-markdown img { max-width: 100%; border-radius: 7px; }
+
 /* settings window content column */
 .spage { scrollbar-gutter: stable; overscroll-behavior: contain; }
 .spage::-webkit-scrollbar { width: 6px; height: 6px; }

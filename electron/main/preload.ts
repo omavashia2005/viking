@@ -14,5 +14,5 @@ contextBridge.exposeInMainWorld('viking', {
 	openSettings: () => ipcRenderer.send('viking:openSettings'),
 	getSettings: () => ipcRenderer.invoke('viking:getSettings'),
 	getModels: () => ipcRenderer.invoke('viking:getModels'),
-	saveSettings: (s: { llm?: object; hotkeys?: object; theme?: string; growth?: 'down' | 'up' }) => ipcRenderer.invoke('viking:saveSettings', s),
+	saveSettings: (s: { llm?: object; connectors?: object; hotkeys?: object; theme?: string; growth?: 'down' | 'up' }) => ipcRenderer.invoke('viking:saveSettings', s),
 });

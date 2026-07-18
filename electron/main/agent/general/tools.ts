@@ -21,7 +21,7 @@ function exaErrorMessage(status: number, body: unknown): string {
 	return `Exa API error (${status})${details ? `: ${details}` : ''}`;
 }
 
-export function createExaWebSearch(apiKey = config.exa.apiKey): ToolSet[string] {
+export function createExaWebSearch(apiKey = config.connectors.exa.apiKey): ToolSet[string] {
 	const key = apiKey?.trim();
 	if (!key) throw new Error('EXA_API_KEY is required for general web search.');
 
