@@ -9,6 +9,7 @@ import { Tabs, TabsContent } from '@/electron/renderer/components/ui/tabs';
 import { THEMES, type Hotkeys, type LLM, type Theme } from '../../shared-types';
 import type { Phase } from './shared-types';
 import { ToolCallLog, type ToolCallEntry } from './components/ToolCallLog';
+import { SearchResult } from '../general/components/SearchResult';
 
 function mergeToolCall(prev: ToolCallEntry[], event: ToolProgress): ToolCallEntry[] {
   const i = prev.findIndex(t => t.id === event.id);
@@ -18,11 +19,12 @@ function mergeToolCall(prev: ToolCallEntry[], event: ToolProgress): ToolCallEntr
   return next;
 }
 
-type ResultPayload = { options: Option[]; error?: string; softError?: string };
+type ResultPayload = { options?: Option[]; answer?: string; error?: string; softError?: string };
 
 type AgentState = {
   phase: Phase;
   options: Option[];
+  answer: string;
   active: number;
   prompt: string;
   error: string;
@@ -47,6 +49,7 @@ type AgentAction =
 export const initialAgentState: AgentState = {
   phase: 'hidden',
   options: [],
+  answer: '',
   active: 0,
   prompt: '',
   error: '',
@@ -59,19 +62,19 @@ export const initialAgentState: AgentState = {
 export function agentReducer(state: AgentState, action: AgentAction): AgentState {
   switch (action.type) {
     case 'show':
-      return { ...state, phase: 'textbox', error: '', softError: '', prompt: '', toolCalls: [], refineFrom: action.refineFrom, closing: false };
+      return { ...state, phase: 'textbox', error: '', softError: '', prompt: '', answer: '', toolCalls: [], refineFrom: action.refineFrom, closing: false };
     case 'loading':
-      return { ...state, phase: 'loading', softError: '', toolCalls: [] };
+      return { ...state, phase: 'loading', softError: '', answer: '', toolCalls: [] };
     case 'tool':
       return { ...state, toolCalls: mergeToolCall(state.toolCalls, action.event) };
     case 'result': {
-      const { options, error, softError } = action.payload;
+      const { options = [], answer = '', error, softError } = action.payload;
       if (error) return { ...state, phase: 'error', error, toolCalls: [] };
-      if (softError && options.length === 0) return { ...state, phase: 'textbox', softError, toolCalls: [] };
-      return { ...state, phase: 'results', options, active: 0, softError: softError ?? state.softError, toolCalls: [] };
+      if (softError && options.length === 0 && !answer) return { ...state, phase: 'textbox', softError, toolCalls: [] };
+      return { ...state, phase: 'results', options, answer, active: 0, softError: softError ?? state.softError, toolCalls: [] };
     }
     case 'reset':
-      return { ...state, phase: 'hidden', closing: false };
+      return { ...state, phase: 'hidden', answer: '', closing: false };
     case 'back':
       return { ...state, phase: 'results', refineFrom: undefined };
     case 'setActive':
@@ -116,7 +119,7 @@ declare global {
 
 export default function CodeAgentApp(): React.ReactNode {
   const [state, dispatch] = useReducer(agentReducer, initialAgentState);
-  const { phase, options, active, prompt, error, softError, refineFrom, toolCalls, closing } = state;
+  const { phase, options, answer, active, prompt, error, softError, refineFrom, toolCalls, closing } = state;
   const [hotkeys, setHotkeys] = useState<Hotkeys>({ open: '', settings: '', close: '', copy: '', back: '' });
   const [theme, setTheme] = useState<Theme>('onyx');
   const hideTimer = useRef<number>();
@@ -144,7 +147,7 @@ export default function CodeAgentApp(): React.ReactNode {
     const offTool = window.viking.receive('viking:tool', (event: ToolProgress) => dispatch({ type: 'tool', event }));
     const offResult = window.viking.receive('viking:result', (p: ResultPayload) => {
       dispatch({ type: 'result', payload: p });
-      if (p.softError && p.options.length === 0) focusInput();
+      if (p.softError && !p.options?.length && !p.answer) focusInput();
     });
     const offReset = window.viking.receive('viking:reset', () => dispatch({ type: 'reset' }));
     // settings live in their own window now; mirror whatever it saves.
@@ -227,15 +230,16 @@ export default function CodeAgentApp(): React.ReactNode {
         if (i < options.length) dispatch({ type: 'setActive', active: i });
         return;
       }
-      if (matchesShortcut(e, hotkeys.copy, true) && options[active]) {
+      const copyText = options[active]?.code ?? answer;
+      if (matchesShortcut(e, hotkeys.copy, true) && copyText) {
         if (window.getSelection()?.toString()) return; // user is doing a real copy
         e.preventDefault();
-        await navigator.clipboard.writeText(options[active].code);
+        await navigator.clipboard.writeText(copyText);
       }
     };
     window.addEventListener('keydown', onKey, true);
     return () => window.removeEventListener('keydown', onKey, true);
-  }, [options, active, hotkeys, phase]);
+  }, [options, answer, active, hotkeys, phase]);
 
   // Spotlight-style dismiss: let overlay-out (140ms) finish before the window hides.
   function close(): void {
@@ -279,6 +283,7 @@ export default function CodeAgentApp(): React.ReactNode {
         </TabsContent>
       ))}
 
+      {phase === 'results' && answer && <SearchResult answer={answer} />}
       {phase === 'error' && <ErrorView message={error} />}
       {alertEl}
     </Tabs>

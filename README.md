@@ -11,16 +11,21 @@ npm install
 ```
 
 Choose a model and enter a Vercel AI Gateway key from the in-app model settings (`⌘ S`).
-The key can also be provided by env:
+The keys can also be provided by env:
 
 ```sh
 export AI_GATEWAY_API_KEY=...                         # optional when saved in settings
+export EXA_API_KEY=...                                # required for general web search
 export LLM_MODEL=anthropic/claude-opus-4.8            # optional
-export VIKING_CWD=/path/to/your/project         # codebase fff greps against
+export VIKING_CWD=/path/to/your/project               # codebase fff greps against
 ```
 
+Launching from an IDE uses the code agent and its codebase tools. Opening Viking
+from the global shortcut uses the general agent, whose only external tool is
+Exa web search.
+
 `fff-mcp` is expected at `~/.local/bin/fff-mcp`. Change the path in
-`electron/main/agent/config.ts` if yours lives elsewhere. Context7 runs via `npx`, no install.
+`electron/main/config.ts` if yours lives elsewhere. Context7 runs via `npx`, no install.
 
 ## Run
 

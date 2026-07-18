@@ -14,6 +14,9 @@ export const config = {
 		apiKey: process.env.AI_GATEWAY_API_KEY ?? '',
 		model: process.env.LLM_MODEL ?? 'anthropic/claude-opus-4.8',
 	},
+	exa: {
+		apiKey: process.env.EXA_API_KEY ?? '',
+	},
 	theme: 'onyx', // overlay theme; see electron/renderer/themes.css for the available blocks
 	growth: 'down' as 'down' | 'up', // which way the overlay grows from the bar; 'up' suits a bottom-of-screen placement
 	mcp: {
