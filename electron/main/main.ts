@@ -88,6 +88,7 @@ let activeIdx = 0;
 let mode: 'spotlight' | 'full' = 'full';
 let rendererReady = false;
 let pendingShow: { mode: 'textbox' | 'followup'; refineFrom?: Option } | null = null;
+let queryNumber = 0;
 
 // h is each mode's floor/initial height; content reports its real height via viking:resize.
 const SIZES = {
@@ -180,7 +181,18 @@ async function captureScreen(): Promise<string | undefined> {
 		const sources = await desktopCapturer.getSources({ types: ['screen'], thumbnailSize: { width, height } });
 		const img = sources[0]?.thumbnail;
 		if (!img || img.isEmpty()) return undefined;
-		return nativeImage.createFromBuffer(img.toJPEG(70)).toDataURL();
+		const jpeg = img.toJPEG(70);
+		const screenshot = nativeImage.createFromBuffer(jpeg).toDataURL();
+		try {
+			const dir = path.join(app.getPath('pictures'), 'viking-screenshots');
+			const file = path.join(dir, `query-${Date.now()}-${++queryNumber}.jpg`);
+			fs.mkdirSync(dir, { recursive: true });
+			fs.writeFileSync(file, jpeg);
+			console.log('[viking] screenshot saved:', file);
+		} catch (error) {
+			console.warn('[viking] screenshot save failed:', error);
+		}
+		return screenshot;
 	} catch { return undefined; }
 }
 
