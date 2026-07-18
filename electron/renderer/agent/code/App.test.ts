@@ -34,6 +34,12 @@ assert.equal(finished.toolCalls[0].status, 'done');
 
 const result = agentReducer(finished, { type: 'result', payload: { options: [option] } });
 assert.deepEqual(
-  { phase: result.phase, options: result.options, active: result.active, toolCalls: result.toolCalls },
-  { phase: 'results', options: [option], active: 0, toolCalls: [] },
+  { phase: result.phase, options: result.options, answer: result.answer, active: result.active, toolCalls: result.toolCalls },
+  { phase: 'results', options: [option], answer: '', active: 0, toolCalls: [] },
+);
+
+const answer = agentReducer(finished, { type: 'result', payload: { answer: 'Current answer' } });
+assert.deepEqual(
+  { phase: answer.phase, options: answer.options, answer: answer.answer },
+  { phase: 'results', options: [], answer: 'Current answer' },
 );

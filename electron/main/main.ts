@@ -2,7 +2,7 @@ import { app, BrowserWindow, globalShortcut, ipcMain, screen, desktopCapturer, n
 import path from 'node:path';
 import fs from 'node:fs';
 import { config } from './config';
-import { generate, type LaunchArgs } from './agent/llm';
+import { agentTypeForSource, generate, type LaunchArgs } from './agent/llm';
 import type { Option } from './agent/code/shared-types';
 import { closeMcpConnections, warmMcpConnections } from './agent/tools/utils';
 import { getGatewayModels } from './agent/gateway-models';
@@ -23,6 +23,7 @@ console.log('[viking] process argv:', process.argv);
 console.log('[viking] launch args:', currentLaunch);
 
 function warmLaunchConnections(launch: LaunchArgs): void {
+	if (launch.source === 'general') return;
 	const cwd = launch.cwd || config.cwd;
 	void warmMcpConnections(cwd)
 		.then(() => console.log('[viking] MCP connections ready:', cwd))
@@ -195,6 +196,11 @@ function hide(): void {
 function friendly(err: Error): string {
 	const m = err.message ?? String(err);
 	if (!config.llm.apiKey) return 'No API key. Open model settings (⌘S) and enter an AI Gateway API key.';
+	if (/EXA_API_KEY/.test(m)) return 'No Exa API key. Set EXA_API_KEY before launching Viking.';
+	if (/Exa API error \(401\)|INVALID_API_KEY/.test(m)) return 'Exa rejected the API key. Check EXA_API_KEY and try again.';
+	if (/Exa API error \(402\)|NO_MORE_CREDITS|BUDGET_EXCEEDED/.test(m)) return 'Exa has no available credits or the API key budget was exceeded.';
+	if (/Exa API error \(429\)/.test(m)) return 'Exa rate limit reached. Wait a moment and try again.';
+	if (/Exa API error \(5\d\d\)|Exa request failed/.test(m)) return 'Could not reach Exa. Check your connection and try again.';
 	if (/ENOENT/.test(m) && /fff-mcp/.test(m)) return `fff-mcp not found at ${config.mcp.fff.command}. Install it, or edit electron/main/config.ts -> mcp.fff.command.`;
 	if (/401|invalid_api_key|Incorrect API key|Unauthenticated/i.test(m)) return 'AI Gateway rejected the API key. Check it in model settings (⌘S).';
 	if (/ENOTFOUND|ECONNREFUSED|fetch failed/i.test(m)) return 'Could not reach Vercel AI Gateway. Check your connection.';
@@ -218,9 +224,25 @@ async function run(prompt: string | undefined, refineFrom?: Option): Promise<voi
 	win?.webContents.send('viking:loading');
 	const screenshot = await captureScreen();
 	try {
-		console.log('[viking] run:', { source: currentLaunch.source, cwd: currentLaunch.cwd || config.cwd, hasActiveFile: !!currentLaunch.activeFile });
+		const agentType = agentTypeForSource(currentLaunch.source);
+		console.log('[viking] run:', agentType === 'general'
+			? { source: currentLaunch.source, agentType, hasScreenshot: !!screenshot }
+			: { source: currentLaunch.source, agentType, cwd: currentLaunch.cwd || config.cwd, hasActiveFile: !!currentLaunch.activeFile });
+		if (agentType === 'general') {
+			const { output, reasoning, softError } = await generate({
+				agentType,
+				userPrompt: prompt ?? '',
+				screenshot: screenshot ?? '',
+				onTool: event => win?.webContents.send('viking:tool', event),
+			});
+			lastOptions = [];
+			activeIdx = 0;
+			win?.webContents.send('viking:result', { answer: output, reasoning, softError });
+			return;
+		}
+
 		const { output, reasoning, softError } = await generate({
-			agentType: 'code',
+			agentType,
 			userPrompt: buildPrompt(prompt, refineFrom) ?? '',
 			screenshot: screenshot ?? '',
 			launch: currentLaunch,
