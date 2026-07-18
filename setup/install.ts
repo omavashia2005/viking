@@ -1,38 +1,11 @@
-import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { ides } from './ides';
 import pluginTemplate from './ides/neovim/neovim.plugin.lua';
 
-// __dirname at runtime is the bundled output dir (dist/); repo root is its parent.
-const REPO_ROOT = path.resolve(__dirname, '..');
+const APP_PATH = '/Applications/Viking.app';
 const GUARD_START = '-- >>> viking';
 const GUARD_END = '-- <<< viking';
-
-function runBuild(): void {
-	console.log('[viking-setup] running `npm run dist`...');
-	const r = spawnSync('npm', ['run', 'dist'], { cwd: REPO_ROOT, stdio: 'inherit' });
-	if (r.status !== 0) {
-		console.error('[viking-setup] build failed');
-		process.exit(r.status ?? 1);
-	}
-}
-
-function resolveAppPath(): string {
-	const pkg = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'package.json'), 'utf8'));
-	const productName: string = pkg.build?.productName ?? pkg.name;
-	const outDir: string = pkg.build?.directories?.output ?? 'dist';
-	// electron-builder --mac --dir lands at <out>/mac-arm64 on Apple Silicon, mac on Intel.
-	const candidates = ['mac-arm64', 'mac', 'mac-x64'].map(d =>
-		path.join(REPO_ROOT, outDir, d, `${productName}.app`),
-	);
-	const found = candidates.find(fs.existsSync);
-	if (!found) {
-		console.error('[viking-setup] could not find .app under', path.join(REPO_ROOT, outDir));
-		process.exit(1);
-	}
-	return found;
-}
 
 function renderStub(appPath: string, keymap: string): string {
 	return pluginTemplate
@@ -64,8 +37,10 @@ function moveOldNvimStub(configDir: string): void {
 }
 
 function main(): void {
-	if (!process.argv.includes('--plugin-only')) runBuild();
-	const appPath = resolveAppPath();
+	if (!fs.existsSync(APP_PATH)) {
+		console.error(`[viking-setup] install the released app at ${APP_PATH} first`);
+		process.exit(1);
+	}
 
 	// ponytail: first registered IDE wins. UI-side this is neovim-only; the array is the extension seam.
 	const ide = ides[0];
@@ -79,12 +54,12 @@ function main(): void {
 	const pluginFile = ide.pluginPath(loc.dir);
 
 	fs.mkdirSync(path.dirname(pluginFile), { recursive: true });
-	fs.writeFileSync(pluginFile, renderStub(appPath, keymap));
+	fs.writeFileSync(pluginFile, renderStub(APP_PATH, keymap));
 	moveOldNvimStub(loc.dir);
 	patchInit(loc.entryFile, ide.entryRequire);
 
 	console.log('[viking-setup] done.');
-	console.log('  app:     ', appPath);
+	console.log('  app:     ', APP_PATH);
 	console.log('  plugin:  ', pluginFile);
 	console.log('  init.lua:', loc.entryFile);
 	console.log('  keymap:  ', keymap, '(override with VIKING_KEYMAP)');
