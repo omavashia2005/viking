@@ -15,7 +15,7 @@ The keys can also be provided by env:
 
 ```sh
 export AI_GATEWAY_API_KEY=...                         # optional when saved in settings
-export EXA_API_KEY=...                                # required for general web search
+export EXA_API_KEY=...                                # optional when saved under settings → connectors
 export LLM_MODEL=anthropic/claude-opus-4.8            # optional
 export VIKING_CWD=/path/to/your/project               # codebase fff greps against
 ```
