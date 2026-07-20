@@ -43,10 +43,9 @@ function ToolActivity({ elapsed }: { elapsed: number }): React.ReactNode {
   return (
     <TaskItem
       aria-label="Work in progress"
-      className="mt-2 flex items-center gap-3 text-sm"
+      className="mt-2 flex items-center gap-2 text-sm"
       role="status"
     >
-      <span aria-hidden="true" className="text-foreground">•</span>
       <span aria-hidden="true">
         <Shimmer as="span" className="font-semibold" duration={1.6}>
           {verb}
@@ -61,76 +60,53 @@ function clip(s: string): string {
   return s.length > 180 ? `${s.slice(0, 180)}...` : s;
 }
 
-function Preview({ lines }: { lines?: string[] }): React.ReactNode {
-  if (!lines?.length) return null;
-  return (
-    <span className="text-muted-foreground"> · {clip(lines.join(" | "))}</span>
-  );
+function formatValue(value: unknown): string {
+  if (typeof value === "string") return value;
+  try {
+    return JSON.stringify(value) ?? String(value);
+  } catch {
+    return String(value);
+  }
 }
 
-function Summary({ summary }: { summary?: ToolSummary }): React.ReactNode {
-  if (!summary) return null;
+function withPreview(text: string, lines?: string[]): string {
+  return lines?.length ? `${text} — ${clip(lines.join(" | "))}` : text;
+}
+
+export function formatToolSummary(name: string, summary?: ToolSummary): string {
+  if (!summary) return "";
   if (summary.type === "search") {
-    return (
-      <>
-        <span className="text-muted-foreground"> · query: {summary.query}</span>
-        {summary.lineCount !== undefined && (
-          <span className="text-muted-foreground">
-            {" "}
-            · {summary.lineCount} lines
-          </span>
-        )}
-        <Preview lines={summary.preview} />
-      </>
+    return withPreview(
+      `Searched for “${clip(summary.query)}”${summary.lineCount !== undefined ? ` (${summary.lineCount} lines)` : ""}`,
+      summary.preview,
     );
   }
   if (summary.type === "read_file") {
-    return (
-      <span className="text-muted-foreground">
-        {" "}
-        · file: {summary.path}
-        {summary.startLine
-          ? `:${summary.startLine}${summary.endLine ? `-${summary.endLine}` : ""}`
-          : ""}
-      </span>
-    );
+    const range = summary.startLine
+      ? `:${summary.startLine}${summary.endLine ? `-${summary.endLine}` : ""}`
+      : "";
+    return `Read ${summary.path}${range}`;
   }
   if (summary.type === "library") {
-    return (
-      <>
-        {summary.libraryName && (
-          <span className="text-muted-foreground">
-            {" "}
-            · library: {summary.libraryName}
-          </span>
-        )}
-        {summary.libraryId && (
-          <span className="text-muted-foreground">
-            {" "}
-            · docs: {summary.libraryId}
-          </span>
-        )}
-        {summary.topic && (
-          <span className="text-muted-foreground">
-            {" "}
-            · topic: {summary.topic}
-          </span>
-        )}
-        <Preview lines={summary.preview} />
-      </>
-    );
+    const subject = summary.libraryName ?? summary.libraryId ?? "library docs";
+    const topic = summary.topic ? ` about ${summary.topic}` : "";
+    return withPreview(`Read docs for ${subject}${topic}`, summary.preview);
   }
-  return (
-    <>
-      {summary.args && (
-        <span className="text-muted-foreground">
-          {" "}
-          · args: {clip(JSON.stringify(summary.args))}
-        </span>
-      )}
-      <Preview lines={summary.preview} />
-    </>
-  );
+  const args = summary.args
+    ? Object.entries(summary.args)
+      .filter(([, value]) => value !== undefined)
+      .map(([key, value]) => `${key}: ${clip(formatValue(value))}`)
+      .join(", ")
+    : "";
+  if (name === "webSearch" && typeof summary.args?.query === "string") {
+    return `Searched for “${clip(summary.args.query)}”`;
+  }
+  return withPreview(args, summary.preview);
+}
+
+function Summary({ name, summary }: { name: string; summary?: ToolSummary }): React.ReactNode {
+  const text = formatToolSummary(name, summary);
+  return text ? <span className="text-muted-foreground"> — {text}</span> : null;
 }
 
 export function ToolCallLog({
@@ -148,7 +124,7 @@ export function ToolCallLog({
   const completed = calls.filter((call) => call.status !== "running").length;
   return (
     <Task defaultOpen>
-      <TaskTrigger title={`Tools · ${completed}/${calls.length}`} />
+      <TaskTrigger title={`Tools (${completed}/${calls.length})`} />
       <TaskContent>
         {calls.map((call) => (
           <TaskItem
@@ -171,9 +147,9 @@ export function ToolCallLog({
               >
                 {call.name}
               </span>
-              <Summary summary={call.summary} />
+              <Summary name={call.name} summary={call.summary} />
               {call.error && (
-                <span className="text-destructive"> · {call.error}</span>
+                <span className="text-destructive"> — {call.error}</span>
               )}
             </span>
           </TaskItem>
