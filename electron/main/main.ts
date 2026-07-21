@@ -54,7 +54,10 @@ const settingsFile = () => path.join(app.getPath('userData'), 'viking-settings.j
 // ponytail: plaintext api key on disk under the user's app data. Swap for keytar if shared machines matter.
 type Persisted = {
 	llm?: Partial<typeof config.llm>;
-	connectors?: { exa?: Partial<typeof config.connectors.exa> };
+	connectors?: {
+		exa?: Partial<typeof config.connectors.exa>;
+		composio?: Partial<typeof config.connectors.composio>;
+	};
 	hotkeys?: Partial<typeof config.hotkeys>;
 	theme?: string;
 	growth?: 'down' | 'up';
@@ -64,6 +67,7 @@ function loadSettings(): void {
 		const j: Persisted = JSON.parse(fs.readFileSync(settingsFile(), 'utf8'));
 		if (j.llm) Object.assign(config.llm, j.llm);
 		if (j.connectors?.exa) Object.assign(config.connectors.exa, j.connectors.exa);
+		if (j.connectors?.composio) Object.assign(config.connectors.composio, j.connectors.composio);
 		if (j.hotkeys) {
 			delete (j.hotkeys as { home?: string }).home; // ponytail: 'home' hotkey removed; persisted files would resurrect it
 			if (j.hotkeys.settings === 'CommandOrControl+K') delete j.hotkeys.settings; // ponytail: old default; drop so the new ⌘S default applies
@@ -76,6 +80,7 @@ function loadSettings(): void {
 function saveSettings(s: Persisted): void {
 	if (s.llm) Object.assign(config.llm, s.llm);
 	if (s.connectors?.exa) Object.assign(config.connectors.exa, s.connectors.exa);
+	if (s.connectors?.composio) Object.assign(config.connectors.composio, s.connectors.composio);
 	if (s.hotkeys) Object.assign(config.hotkeys, s.hotkeys);
 	if (s.theme) config.theme = s.theme;
 	if (s.growth) config.growth = s.growth;
@@ -223,6 +228,7 @@ function hide(): void {
 function friendly(err: Error): string {
 	const m = err.message ?? String(err);
 	if (!config.llm.apiKey) return 'No API key. Open model settings (⌘S) and enter an AI Gateway API key.';
+	if (/COMPOSIO_API_KEY/.test(m)) return 'No Composio API key. Open settings (⌘S) → connectors and enter one.';
 	if (/EXA_API_KEY/.test(m)) return 'No Exa API key. Open settings (⌘S) → connectors and enter one.';
 	if (/Exa API error \(401\)|INVALID_API_KEY/.test(m)) return 'Exa rejected the API key. Check EXA_API_KEY and try again.';
 	if (/Exa API error \(402\)|NO_MORE_CREDITS|BUDGET_EXCEEDED/.test(m)) return 'Exa has no available credits or the API key budget was exceeded.';
@@ -384,7 +390,10 @@ app.whenReady().then(() => {
 	ipcMain.on('viking:openSettings', () => openSettingsWindow());
 	ipcMain.handle('viking:getSettings', () => ({
 		llm: { ...config.llm },
-		connectors: { exa: { ...config.connectors.exa } },
+		connectors: {
+			exa: { ...config.connectors.exa },
+			composio: { ...config.connectors.composio },
+		},
 		hotkeys: { ...config.hotkeys },
 		theme: config.theme,
 		growth: config.growth,
@@ -400,7 +409,10 @@ app.whenReady().then(() => {
 		// Keep other windows (e.g. the overlay) live-updated; skip the sender to avoid an echo loop.
 		const snap = {
 			llm: { ...config.llm },
-			connectors: { exa: { ...config.connectors.exa } },
+			connectors: {
+				exa: { ...config.connectors.exa },
+				composio: { ...config.connectors.composio },
+			},
 			hotkeys: { ...config.hotkeys },
 			theme: config.theme,
 			growth: config.growth,

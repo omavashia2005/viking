@@ -18,6 +18,9 @@ export const config = {
 		exa: {
 			apiKey: process.env.EXA_API_KEY ?? '',
 		},
+		composio: {
+			apiKey: process.env.COMPOSIO_API_KEY ?? '',
+		},
 	},
 	theme: 'onyx', // overlay theme; see electron/renderer/themes.css for the available blocks
 	growth: 'down' as 'down' | 'up', // which way the overlay grows from the bar; 'up' suits a bottom-of-screen placement

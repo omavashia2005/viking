@@ -22,7 +22,7 @@ export function SearchResult({ answer }: { answer: string }): React.ReactNode {
         <ArtifactHeader>
           <div>
             <ArtifactTitle>Search result</ArtifactTitle>
-            <ArtifactDescription>Exa web search</ArtifactDescription>
+            <ArtifactDescription>Composio tools</ArtifactDescription>
           </div>
         </ArtifactHeader>
         <ArtifactContent className="select-text text-sm leading-relaxed">

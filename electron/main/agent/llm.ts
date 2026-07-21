@@ -42,7 +42,7 @@ export const agents = {
 	general: {
 		instructions: generalPrompts.system,
 		buildPrompt: buildGeneralPrompt,
-		buildTools: () => buildGeneralTools(),
+		buildTools: buildGeneralTools,
 		summarizeTool: generalToolSummary,
 	},
 };
@@ -69,9 +69,9 @@ export async function generate<T extends AgentType>(input: UserInput<T>) {
 	const prompt = input.agentType === 'general'
 		? agents.general.buildPrompt(input.userPrompt)
 		: agents.code.buildPrompt(input.userPrompt, input.launch?.activeFile);
-	const tools = input.agentType === 'general'
+	const tools = await (input.agentType === 'general'
 		? agents.general.buildTools()
-		: agents.code.buildTools(input.launch?.cwd || config.cwd);
+		: agents.code.buildTools(input.launch?.cwd || config.cwd));
 	const userContent: UserContent = [{ type: 'text', text: prompt }];
 	if (input.screenshot) userContent.push({ type: 'file', mediaType: 'image/jpeg', data: input.screenshot });
 	console.log('[viking:llm] query', { agentType: input.agentType, model: config.llm.model, hasScreenshot: !!input.screenshot, prompt });
