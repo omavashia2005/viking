@@ -103,11 +103,12 @@ function PageHead({ title, sub }: { title: string; sub: string }): React.ReactNo
   );
 }
 
-function ConnectorCard({ name, description, envName, logo, apiKey, onChange }: {
+function ConnectorCard({ name, description, envName, logo, keyHint, apiKey, onChange }: {
   name: string;
   description: string;
   envName: string;
-  logo: string;
+  logo?: string;
+  keyHint: string;
   apiKey: string;
   onChange: (apiKey: string) => void;
 }): React.ReactNode {
@@ -116,7 +117,7 @@ function ConnectorCard({ name, description, envName, logo, apiKey, onChange }: {
     <article className="overflow-hidden rounded-xl border border-border bg-secondary/30">
       <header className="flex items-center gap-3 border-b border-border px-4 py-3.5">
         <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-white">
-          <img src={logo} alt="" className="h-6 w-5 object-contain" />
+          {logo ? <img src={logo} alt="" className="h-6 w-5 object-contain" /> : <span className="text-lg font-semibold text-black">{name[0].toUpperCase()}</span>}
         </span>
         <span className="min-w-0 flex-1">
           <span className="block text-[12px] font-medium lowercase">{name}</span>
@@ -141,7 +142,7 @@ function ConnectorCard({ name, description, envName, logo, apiKey, onChange }: {
           className="bg-card caret-primary"
         />
         <span className="text-[10px] lowercase text-muted-foreground">
-          stored locally · create a key at dashboard.exa.ai/api-keys
+          stored locally · {keyHint}
         </span>
       </label>
     </article>
@@ -183,7 +184,7 @@ function ThemeCard({ value, selected, onSelect }: { value: Theme; selected: bool
 export default function SettingsApp(): React.ReactNode {
   const [page, setPage] = useState<Page>('model'); // ⌘S used to land on the provider pane
   const [llm, setLlm] = useState<LLM>({ apiKey: '', model: '' });
-  const [connectors, setConnectors] = useState<ConnectorSettings>({ exa: { apiKey: '' } });
+  const [connectors, setConnectors] = useState<ConnectorSettings>({ exa: { apiKey: '' }, composio: { apiKey: '' } });
   const [hotkeys, setHotkeys] = useState<Hotkeys>({ open: '', settings: '', close: '', copy: '', back: '' });
   const [theme, setTheme] = useState<Theme>('onyx');
   const [growth, setGrowth] = useState<'down' | 'up'>('down');
@@ -301,8 +302,17 @@ export default function SettingsApp(): React.ReactNode {
                 description="web search for current information"
                 envName="EXA_API_KEY"
                 logo="exa-logomark.svg"
+                keyHint="create a key at dashboard.exa.ai/api-keys"
                 apiKey={connectors.exa.apiKey}
-                onChange={apiKey => setConnectors({ exa: { apiKey } })}
+                onChange={apiKey => setConnectors({ ...connectors, exa: { apiKey } })}
+              />
+              <ConnectorCard
+                name="composio"
+                description="tools for the general agent"
+                envName="COMPOSIO_API_KEY"
+                keyHint="create a key at dashboard.composio.dev"
+                apiKey={connectors.composio.apiKey}
+                onChange={apiKey => setConnectors({ ...connectors, composio: { apiKey } })}
               />
             </section>
           )}

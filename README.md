@@ -15,14 +15,14 @@ The keys can also be provided by env:
 
 ```sh
 export AI_GATEWAY_API_KEY=...                         # optional when saved in settings
-export EXA_API_KEY=...                                # optional when saved under settings → connectors
+export COMPOSIO_API_KEY=...                            # optional when saved under settings → connectors
 export LLM_MODEL=anthropic/claude-opus-4.8            # optional
 export VIKING_CWD=/path/to/your/project               # codebase fff greps against
 ```
 
 Launching from an IDE uses the code agent and its codebase tools. Opening Viking
-from the global shortcut uses the general agent, whose only external tool is
-Exa web search.
+from the global shortcut uses the general agent, whose external tools are provided
+by Composio.
 
 `fff-mcp` is expected at `~/.local/bin/fff-mcp`. Change the path in
 `electron/main/config.ts` if yours lives elsewhere. Context7 runs via `npx`, no install.
