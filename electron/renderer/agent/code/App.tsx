@@ -112,7 +112,7 @@ declare global {
       openSettings: () => void;
       getSettings: () => Promise<{ llm: LLM; connectors: ConnectorSettings; hotkeys: Hotkeys; theme: Theme; growth: 'down' | 'up' }>;
       getModels: () => Promise<GatewayModel[]>;
-      getConnectorStatuses: (input: { apiKey: string }) => Promise<ConnectorStatus[]>;
+      getConnectorStatuses: (input: { apiKey: string; connectorIds: ConnectorId[] }) => Promise<ConnectorStatus[]>;
       connectConnector: (input: { apiKey: string; connectorId: ConnectorId }) => Promise<ConnectorStatus>;
       saveSettings: (s: { llm?: Partial<LLM>; connectors?: ConnectorSettings; hotkeys?: Partial<Hotkeys>; theme?: Theme; growth?: 'down' | 'up' }) => Promise<void>;
     };

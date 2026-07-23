@@ -1,10 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Exa, Gmail, Notion, Slack, ToolCard, type ToolCatalogItem } from 'ai-tool-elements';
+import { ToolCard, toolCatalog } from 'ai-tool-elements';
 import { Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ModelPicker } from './components/ModelPicker';
 import { THEMES, type ConnectorId, type ConnectorSettings, type ConnectorStatus, type Hotkeys, type LLM, type Theme } from './shared-types';
 import { Button } from './components/ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './components/ui/dialog';
 import { Input } from './components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './components/ui/select';
 
@@ -13,12 +14,7 @@ type Page = (typeof PAGES)[number];
 
 const MICRO = 'text-[10.5px] lowercase tracking-[0.16em] text-muted-foreground';
 
-const CONNECTORS: readonly { id: ConnectorId; tool: ToolCatalogItem }[] = [
-  { id: 'exa', tool: Exa },
-  { id: 'notion', tool: Notion },
-  { id: 'gmail', tool: Gmail },
-  { id: 'slack', tool: Slack },
-];
+const CONNECTOR_IDS = toolCatalog.map(tool => tool.id);
 
 const GLYPHS: Record<string, string> = {
   commandorcontrol: '⌘', command: '⌘', control: '⌃', alt: '⌥', shift: '⇧', escape: 'esc', space: 'space',
@@ -103,12 +99,182 @@ function AccelEditor({ value, label, onChange }: { value: string; label: string;
   );
 }
 
-function PageHead({ title, sub }: { title: string; sub: string }): React.ReactNode {
+function PageHead({ title, sub, children }: { title: string; sub: string; children?: React.ReactNode }): React.ReactNode {
   return (
-    <header className="flex flex-col gap-1.5 border-b border-border pb-5">
-      <h1 className="m-0 text-[14px] font-medium lowercase tracking-[0.22em]">{title}</h1>
-      <p className="m-0 text-[11px] lowercase text-muted-foreground">{sub}</p>
+    <header className="flex items-start justify-between gap-4 border-b border-border pb-5">
+      <div className="flex flex-col gap-1.5">
+        <h1 className="m-0 text-[14px] font-medium lowercase tracking-[0.22em]">{title}</h1>
+        <p className="m-0 text-[11px] lowercase text-muted-foreground">{sub}</p>
+      </div>
+      {children}
     </header>
+  );
+}
+
+function ConnectorsPage({ value, onChange }: {
+  value: ConnectorSettings;
+  onChange: (value: ConnectorSettings) => void;
+}): React.ReactNode {
+  const [query, setQuery] = useState('');
+  const [statuses, setStatuses] = useState<ConnectorStatus[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [connecting, setConnecting] = useState<ConnectorId>();
+  const [error, setError] = useState('');
+  const [composioKeyOpen, setComposioKeyOpen] = useState(false);
+  const [composioKeyDraft, setComposioKeyDraft] = useState('');
+  const pendingConnector = useRef<ConnectorId>();
+
+  useEffect(() => {
+    const apiKey = value.composio.apiKey.trim();
+    if (!apiKey) {
+      setStatuses([]);
+      setLoading(false);
+      return;
+    }
+
+    let active = true;
+    const timer = setTimeout(() => {
+      setLoading(true);
+      setError('');
+      void window.viking.getConnectorStatuses({ apiKey, connectorIds: CONNECTOR_IDS })
+        .then(next => {
+          if (active) setStatuses(next);
+        })
+        .catch(reason => {
+          if (active) setError(reason instanceof Error ? reason.message : String(reason));
+        })
+        .finally(() => {
+          if (active) setLoading(false);
+        });
+    }, 350);
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [value.composio.apiKey]);
+
+  const connectWithKey = async (connectorId: ConnectorId, apiKey: string): Promise<void> => {
+    setConnecting(connectorId);
+    setError('');
+    try {
+      const status = await window.viking.connectConnector({ apiKey, connectorId });
+      setStatuses(current => [...current.filter(item => item.id !== status.id), status]);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason));
+    } finally {
+      setConnecting(undefined);
+    }
+  };
+
+  const openComposioKey = (connectorId?: ConnectorId): void => {
+    setComposioKeyDraft(value.composio.apiKey);
+    pendingConnector.current = connectorId;
+    setComposioKeyOpen(true);
+  };
+
+  const connect = (connectorId: ConnectorId): void => {
+    const apiKey = value.composio.apiKey.trim();
+    if (!apiKey) {
+      openComposioKey(connectorId);
+      return;
+    }
+    void connectWithKey(connectorId, apiKey);
+  };
+
+  const saveComposioKey = (event: React.FormEvent<HTMLFormElement>): void => {
+    event.preventDefault();
+    const apiKey = composioKeyDraft.trim();
+    onChange({ composio: { apiKey } });
+    setComposioKeyOpen(false);
+    const connectorId = pendingConnector.current;
+    pendingConnector.current = undefined;
+    if (connectorId) void connectWithKey(connectorId, apiKey);
+  };
+
+  const visibleConnectors = toolCatalog.filter(tool =>
+    tool.name.toLowerCase().includes(query.trim().toLowerCase()),
+  );
+
+  return (
+    <section className="flex max-w-4xl flex-col gap-8">
+      <PageHead title="connectors" sub={`${toolCatalog.length} integrations available through composio`}>
+        <Button type="button" size="sm" onClick={() => openComposioKey()}>
+          + Add Composio key
+        </Button>
+      </PageHead>
+      <div className="flex flex-col gap-4">
+        <Input
+          type="search"
+          value={query}
+          onChange={event => setQuery(event.target.value)}
+          placeholder="search connectors by name"
+          aria-label="search connectors by name"
+          className="bg-secondary"
+        />
+        {error && <p role="alert" className="m-0 text-[10px] text-destructive">{error}</p>}
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {visibleConnectors.map(tool => {
+            const connected = statuses.some(status => status.id === tool.id && status.connected);
+            const pending = connecting === tool.id;
+            return (
+              <ToolCard
+                key={tool.id}
+                tool={tool}
+                actions={(
+                  <Button
+                    type="button"
+                    size="xs"
+                    variant={connected ? 'secondary' : 'outline'}
+                    disabled={connected || pending || loading}
+                    onClick={() => connect(tool.id)}
+                  >
+                    {connected ? 'connected' : pending ? 'connecting…' : loading ? 'checking…' : 'connect'}
+                  </Button>
+                )}
+                className="gap-0 py-0 shadow-none [&_[data-slot=card-header]]:items-center [&_[data-slot=card-header]]:px-4 [&_[data-slot=card-header]]:py-4 [&_[data-slot=card-title]]:text-[12px] [&_[data-slot=card-title]]:lowercase"
+              />
+            );
+          })}
+        </div>
+        {visibleConnectors.length === 0 && (
+          <p role="status" className="m-0 py-6 text-center text-[11px] lowercase text-muted-foreground">no connectors found</p>
+        )}
+      </div>
+      <Dialog
+        open={composioKeyOpen}
+        onOpenChange={open => {
+          setComposioKeyOpen(open);
+          if (!open) pendingConnector.current = undefined;
+        }}
+      >
+        <DialogContent>
+          <form className="flex flex-col gap-5" onSubmit={saveComposioKey}>
+            <DialogHeader>
+              <DialogTitle>Add Composio key</DialogTitle>
+              <DialogDescription>
+                This project key opens Composio setup, where each connector requests its required credentials.
+              </DialogDescription>
+            </DialogHeader>
+            <label className="flex flex-col gap-1.5">
+              <span className={MICRO}>composio api key</span>
+              <Input
+                type="password"
+                value={composioKeyDraft}
+                onChange={event => setComposioKeyDraft(event.target.value)}
+                placeholder="COMPOSIO_API_KEY"
+                autoComplete="off"
+                spellCheck={false}
+                required
+              />
+              <span className="text-[10px] lowercase text-muted-foreground">stored locally · create a key at app.composio.dev</span>
+            </label>
+            <DialogFooter>
+              <Button type="submit">Save and continue</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </section>
   );
 }
 
@@ -145,14 +311,9 @@ function ThemeCard({ value, selected, onSelect }: { value: Theme; selected: bool
 }
 
 export default function SettingsApp(): React.ReactNode {
-  const [page, setPage] = useState<Page>('model'); // ⌘S used to land on the provider pane
+  const [page, setPage] = useState<Page>('connectors');
   const [llm, setLlm] = useState<LLM>({ apiKey: '', model: '' });
   const [connectors, setConnectors] = useState<ConnectorSettings>({ composio: { apiKey: '' } });
-  const [connectorQuery, setConnectorQuery] = useState('');
-  const [connectorStatuses, setConnectorStatuses] = useState<ConnectorStatus[]>([]);
-  const [loadingConnectors, setLoadingConnectors] = useState(false);
-  const [connecting, setConnecting] = useState<ConnectorId>();
-  const [connectorError, setConnectorError] = useState('');
   const [hotkeys, setHotkeys] = useState<Hotkeys>({ open: '', settings: '', close: '', copy: '', back: '' });
   const [theme, setTheme] = useState<Theme>('onyx');
   const [growth, setGrowth] = useState<'down' | 'up'>('down');
@@ -181,35 +342,6 @@ export default function SettingsApp(): React.ReactNode {
 
   useEffect(() => { document.documentElement.dataset.theme = theme; }, [theme]);
 
-  useEffect(() => {
-    const apiKey = connectors.composio.apiKey.trim();
-    if (page !== 'connectors' || !apiKey) {
-      setConnectorStatuses([]);
-      setLoadingConnectors(false);
-      return;
-    }
-
-    let active = true;
-    const timer = setTimeout(() => {
-      setLoadingConnectors(true);
-      setConnectorError('');
-      void window.viking.getConnectorStatuses({ apiKey })
-        .then(statuses => {
-          if (active) setConnectorStatuses(statuses);
-        })
-        .catch(error => {
-          if (active) setConnectorError(error instanceof Error ? error.message : String(error));
-        })
-        .finally(() => {
-          if (active) setLoadingConnectors(false);
-        });
-    }, 350);
-    return () => {
-      active = false;
-      clearTimeout(timer);
-    };
-  }, [page, connectors.composio.apiKey]);
-
   // Autosave on change; main broadcasts 'viking:settings' to the other windows.
   useEffect(() => {
     if (!ready.current) return;
@@ -232,26 +364,6 @@ export default function SettingsApp(): React.ReactNode {
       if (savedTimer !== undefined) clearTimeout(savedTimer);
     };
   }, [llm, connectors, hotkeys, theme, growth]);
-
-  const connect = async (connectorId: ConnectorId): Promise<void> => {
-    setConnecting(connectorId);
-    setConnectorError('');
-    try {
-      const status = await window.viking.connectConnector({
-        apiKey: connectors.composio.apiKey,
-        connectorId,
-      });
-      setConnectorStatuses(current => [...current.filter(item => item.id !== status.id), status]);
-    } catch (error) {
-      setConnectorError(error instanceof Error ? error.message : String(error));
-    } finally {
-      setConnecting(undefined);
-    }
-  };
-
-  const visibleConnectors = CONNECTORS.filter(({ tool }) =>
-    tool.name.toLowerCase().includes(connectorQuery.trim().toLowerCase()),
-  );
 
   return (
     // --background is transparent for the overlay's sake; this window paints its own surface.
@@ -312,60 +424,7 @@ export default function SettingsApp(): React.ReactNode {
           )}
 
           {page === 'connectors' && (
-            <section className="flex max-w-2xl flex-col gap-8">
-              <PageHead title="connectors" sub="connect tools for the general agent through composio" />
-              <label className="flex flex-col gap-1.5">
-                <span className={MICRO}>composio api key</span>
-                <Input
-                  type="password"
-                  value={connectors.composio.apiKey}
-                  onChange={e => setConnectors({ composio: { apiKey: e.target.value } })}
-                  placeholder="COMPOSIO_API_KEY"
-                  autoComplete="off"
-                  spellCheck={false}
-                  className="bg-secondary caret-primary"
-                />
-                <span className="text-[10px] lowercase text-muted-foreground">stored locally · create a key at app.composio.dev</span>
-              </label>
-              <div className="flex flex-col gap-4">
-                <Input
-                  type="search"
-                  value={connectorQuery}
-                  onChange={event => setConnectorQuery(event.target.value)}
-                  placeholder="search connectors by name"
-                  aria-label="search connectors by name"
-                  className="bg-secondary"
-                />
-                {connectorError && <p role="alert" className="m-0 text-[10px] text-destructive">{connectorError}</p>}
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  {visibleConnectors.map(({ id, tool }) => {
-                    const connected = connectorStatuses.some(status => status.id === id && status.connected);
-                    const pending = connecting === id;
-                    return (
-                      <ToolCard
-                        key={id}
-                        tool={tool}
-                        actions={(
-                          <Button
-                            type="button"
-                            size="xs"
-                            variant={connected ? 'secondary' : 'outline'}
-                            disabled={connected || pending || loadingConnectors || !connectors.composio.apiKey.trim()}
-                            onClick={() => void connect(id)}
-                          >
-                            {connected ? 'connected' : pending ? 'connecting…' : loadingConnectors ? 'checking…' : 'connect'}
-                          </Button>
-                        )}
-                        className="gap-0 py-0 shadow-none [&_[data-slot=card-header]]:items-center [&_[data-slot=card-header]]:px-4 [&_[data-slot=card-header]]:py-4 [&_[data-slot=card-title]]:text-[12px] [&_[data-slot=card-title]]:lowercase"
-                      />
-                    );
-                  })}
-                </div>
-                {visibleConnectors.length === 0 && (
-                  <p role="status" className="m-0 py-6 text-center text-[11px] lowercase text-muted-foreground">no connectors found</p>
-                )}
-              </div>
-            </section>
+            <ConnectorsPage value={connectors} onChange={setConnectors} />
           )}
 
           {page === 'appearance' && (
