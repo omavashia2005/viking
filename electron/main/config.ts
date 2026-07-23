@@ -1,5 +1,6 @@
 import os from 'node:os';
 import path from 'node:path';
+import { z } from 'zod';
 
 // All knobs live here. Edit me, don't bury settings in the rest of the code.
 export const config = {
@@ -30,3 +31,24 @@ export const config = {
 	},
 	cwd: process.env.VIKING_CWD ?? process.cwd(),
 };
+
+export const PersistedSettings = z.object({
+	llm: z.object({
+		apiKey: z.string(),
+		model: z.string(),
+	}).partial().optional(),
+	connectors: z.object({
+		exa: z.object({ apiKey: z.string() }).partial().optional(),
+		composio: z.object({ apiKey: z.string() }).partial().optional(),
+	}).optional(),
+	hotkeys: z.object({
+		open: z.string(),
+		settings: z.string(),
+		close: z.string(),
+		copy: z.string(),
+		back: z.string(),
+	}).partial().optional(),
+	theme: z.string().optional(),
+	growth: z.enum(['down', 'up']).optional(),
+});
+export type PersistedSettings = z.infer<typeof PersistedSettings>;

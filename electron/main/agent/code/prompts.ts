@@ -1,19 +1,14 @@
 import fs from 'node:fs';
+import { z } from 'zod';
 
-type Context = {
-	userPrompt?: string;
-	codebase: string;
-};
-
-type PromptUser = (context: Context) => string;
-
-type Prompts = {
-	system: string;
-	user: PromptUser;
-};
+const Context = z.object({
+	userPrompt: z.string().optional(),
+	codebase: z.string(),
+});
+type Context = z.infer<typeof Context>;
 
 // One place for prompts. Edit phrasing here, not at the call site.
-export const prompts: Prompts = {
+export const prompts = {
 	system: `You are a coding-snippet generator embedded in a floating overlay.
 Return as many distinct, useful, idiomatic options as the request warrants.
 Each option must be runnable code only — no prose, no comments unless idiomatic, no markdown fences.
@@ -36,7 +31,8 @@ Setting "startLine": read_file prefixes every line with "N: " and grep_codebase 
   • addition at end of file → last line + 1
 Set "startLine" to null only if you called read_file on the target and it genuinely offers no anchor (empty file, unclear insertion point). Never guess a number without reading the file first.`,
 
-	user: ctx => {
+	user: (input: Context) => {
+		const ctx = Context.parse(input);
 		const parts: string[] = [];
 		if (ctx.userPrompt) parts.push(`Request:\n${ctx.userPrompt}`);
 		else parts.push(`No explicit prompt. Infer the desired snippet from the screenshot and the surrounding code.`);

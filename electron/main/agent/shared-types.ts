@@ -1,19 +1,24 @@
-export type GatewayModel = {
-	id: string;
-	name: string;
-	provider: string;
-};
+import { z } from 'zod';
 
-export type ReasoningProgress = {
-	id: number;
-	text: string;
-};
+export const GatewayModel = z.object({
+	id: z.string(),
+	name: z.string(),
+	provider: z.string(),
+});
+export type GatewayModel = z.infer<typeof GatewayModel>;
 
-export type ToolProgress<TSummary = unknown> = {
-	id: string;
-	name: string;
-	status: 'running' | 'done' | 'error';
-	args?: Record<string, unknown>;
-	summary?: TSummary;
-	error?: string;
-};
+export const ReasoningProgress = z.object({
+	id: z.number().int().nonnegative(),
+	text: z.string(),
+});
+export type ReasoningProgress = z.infer<typeof ReasoningProgress>;
+
+export const ToolProgress = z.object({
+	id: z.string(),
+	name: z.string(),
+	status: z.enum(['running', 'done', 'error']),
+	args: z.record(z.unknown()).optional(),
+	summary: z.unknown().optional(),
+	error: z.string().optional(),
+});
+export type ToolProgress = z.infer<typeof ToolProgress>;

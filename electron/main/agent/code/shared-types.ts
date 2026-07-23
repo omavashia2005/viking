@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { ToolProgress as SharedToolProgress } from '../shared-types';
+import { ToolProgress as SharedToolProgress } from '../shared-types';
 
 export const CodeLanguage = z.enum([
 	'rust',
@@ -76,4 +76,32 @@ export const ToolSummary = z.discriminatedUnion('type', [
 ]);
 export type ToolSummary = z.infer<typeof ToolSummary>;
 
-export type ToolProgress = SharedToolProgress<ToolSummary>;
+export const ToolProgress = SharedToolProgress.extend({ summary: ToolSummary.optional() });
+export type ToolProgress = z.infer<typeof ToolProgress>;
+
+export const FindRepoRootParams = z.object({ cwd: z.string() });
+export type FindRepoRootParams = z.infer<typeof FindRepoRootParams>;
+
+export const FindRepoRootResult = z.object({ path: z.string() }).optional();
+export type FindRepoRootResult = z.infer<typeof FindRepoRootResult>;
+
+export const ResolveReadPathParams = z.object({
+	cwd: z.string(),
+	filePath: z.string(),
+});
+export type ResolveReadPathParams = z.infer<typeof ResolveReadPathParams>;
+
+export const ResolveReadPathResult = z.object({ absolutePath: z.string() });
+export type ResolveReadPathResult = z.infer<typeof ResolveReadPathResult>;
+
+export const ReadFileParams = z.object({
+	cwd: z.string(),
+	args: ReadFileArgs,
+});
+export type ReadFileParams = z.infer<typeof ReadFileParams>;
+
+export const TextToolResult = z.object({ content: z.string() });
+export type TextToolResult = z.infer<typeof TextToolResult>;
+
+export const PreviewLines = z.array(z.string()).optional();
+export type PreviewLines = z.infer<typeof PreviewLines>;

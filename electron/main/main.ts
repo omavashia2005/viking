@@ -3,7 +3,7 @@ import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import fs from 'node:fs';
 import { autoUpdater } from 'electron-updater';
-import { config } from './config';
+import { config, PersistedSettings, type PersistedSettings as PersistedSettingsType } from './config';
 import { agentTypeForSource, generate, type LaunchArgs } from './agent/llm';
 import type { Option } from './agent/code/shared-types';
 import { closeMcpConnections, warmMcpConnections } from './agent/tools/utils';
@@ -52,19 +52,9 @@ if (!app.requestSingleInstanceLock()) {
 
 const settingsFile = () => path.join(app.getPath('userData'), 'viking-settings.json');
 // ponytail: plaintext api key on disk under the user's app data. Swap for keytar if shared machines matter.
-type Persisted = {
-	llm?: Partial<typeof config.llm>;
-	connectors?: {
-		exa?: Partial<typeof config.connectors.exa>;
-		composio?: Partial<typeof config.connectors.composio>;
-	};
-	hotkeys?: Partial<typeof config.hotkeys>;
-	theme?: string;
-	growth?: 'down' | 'up';
-};
 function loadSettings(): void {
 	try {
-		const j: Persisted = JSON.parse(fs.readFileSync(settingsFile(), 'utf8'));
+		const j = PersistedSettings.parse(JSON.parse(fs.readFileSync(settingsFile(), 'utf8')));
 		if (j.llm) Object.assign(config.llm, j.llm);
 		if (j.connectors?.exa) Object.assign(config.connectors.exa, j.connectors.exa);
 		if (j.connectors?.composio) Object.assign(config.connectors.composio, j.connectors.composio);
@@ -77,7 +67,7 @@ function loadSettings(): void {
 		if (j.growth) config.growth = j.growth;
 	} catch { }
 }
-function saveSettings(s: Persisted): void {
+function saveSettings(s: PersistedSettingsType): void {
 	if (s.llm) Object.assign(config.llm, s.llm);
 	if (s.connectors?.exa) Object.assign(config.connectors.exa, s.connectors.exa);
 	if (s.connectors?.composio) Object.assign(config.connectors.composio, s.connectors.composio);
@@ -399,7 +389,8 @@ app.whenReady().then(() => {
 		growth: config.growth,
 	}));
 	ipcMain.handle('viking:getModels', getGatewayModels);
-	ipcMain.handle('viking:saveSettings', (e, s: Persisted) => {
+	ipcMain.handle('viking:saveSettings', (e, input: unknown) => {
+		const s = PersistedSettings.parse(input);
 		const prevOpen = config.hotkeys.open;
 		saveSettings(s);
 		if (s.hotkeys?.open && s.hotkeys.open !== prevOpen) {

@@ -1,11 +1,17 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { z } from 'zod';
 import {
+	FindRepoRootParams,
+	FindRepoRootResult,
 	GetLibraryDocsArgs,
+	PreviewLines,
 	QueryArgs,
 	ReadFileArgs,
+	ReadFileParams,
 	ResolveLibraryArgs,
+	ResolveReadPathParams,
+	ResolveReadPathResult,
+	TextToolResult,
 	type GetLibraryDocsArgs as GetLibraryDocsArguments,
 	type QueryArgs as QueryArguments,
 	type ResolveLibraryArgs as ResolveLibraryArguments,
@@ -18,33 +24,6 @@ import {
 	type ToolArguments,
 	type ToolContext,
 } from '../tools/utils';
-
-const FindRepoRootParams = z.object({ cwd: z.string() });
-type FindRepoRootParams = z.infer<typeof FindRepoRootParams>;
-
-const FindRepoRootResult = z.object({ path: z.string() }).optional();
-type FindRepoRootResult = z.infer<typeof FindRepoRootResult>;
-
-const ResolveReadPathParams = z.object({
-	cwd: z.string(),
-	filePath: z.string(),
-});
-type ResolveReadPathParams = z.infer<typeof ResolveReadPathParams>;
-
-const ResolveReadPathResult = z.object({ absolutePath: z.string() });
-type ResolveReadPathResult = z.infer<typeof ResolveReadPathResult>;
-
-const ReadFileParams = z.object({
-	cwd: z.string(),
-	args: ReadFileArgs,
-});
-type ReadFileParams = z.infer<typeof ReadFileParams>;
-
-const TextToolResult = z.object({ content: z.string() });
-type TextToolResult = z.infer<typeof TextToolResult>;
-
-const PreviewLines = z.array(z.string()).optional();
-type PreviewLines = z.infer<typeof PreviewLines>;
 
 function findRepoRoot({ cwd }: FindRepoRootParams): FindRepoRootResult {
 	let dir = path.resolve(cwd || process.cwd());
