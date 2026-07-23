@@ -1,10 +1,14 @@
-export const ideIds = ['neovim', 'vscode'] as const;
-export type IdeId = (typeof ideIds)[number];
-export type LaunchSource = IdeId | 'general';
+import { z } from 'zod';
 
-export function normalizeLaunchSource(source?: string): LaunchSource {
-	return ideIds.find(id => id === source) ?? 'general';
-}
+export const IdeId = z.enum(['neovim', 'vscode']);
+export type IdeId = z.infer<typeof IdeId>;
+export const ideIds = IdeId.options;
+
+export const LaunchSource = z.union([IdeId, z.literal('general')]);
+export type LaunchSource = z.infer<typeof LaunchSource>;
+
+export const normalizeLaunchSource = (source?: string): LaunchSource =>
+	LaunchSource.safeParse(source).data ?? 'general';
 
 export interface Ide {
 	id: IdeId;

@@ -8,6 +8,7 @@ import {
 	type FlexibleSchema,
 	type UserContent,
 } from 'ai';
+import { z } from 'zod';
 import { config } from '../config';
 import { LLMResponse } from './code/shared-types';
 import { buildCodePrompt, prompts as codePrompts } from './code/prompts';
@@ -15,7 +16,7 @@ import { buildCodeTools, toolSummary as codeToolSummary } from './code/tools';
 import { buildGeneralPrompt, prompts as generalPrompts } from './general/prompts';
 import { buildGeneralTools, toolSummary as generalToolSummary } from './general/tools';
 import type { ReasoningProgress, ToolProgress } from './shared-types';
-import type { LaunchSource } from '../../../setup/ides/types';
+import { LaunchSource } from '../../../setup/ides/types';
 
 let gateway: ReturnType<typeof createGateway> | undefined;
 let gatewayApiKey: string | undefined;
@@ -28,7 +29,12 @@ export function getGateway(): ReturnType<typeof createGateway> {
 	return gateway;
 }
 
-export type LaunchArgs = { cwd?: string; activeFile?: string; source: LaunchSource };
+export const LaunchArgs = z.object({
+	cwd: z.string().optional(),
+	activeFile: z.string().optional(),
+	source: LaunchSource,
+});
+export type LaunchArgs = z.infer<typeof LaunchArgs>;
 
 export const agents = {
 	code: {
@@ -50,21 +56,25 @@ export const agents = {
 export type AgentType = keyof typeof agents;
 export const agentTypeForSource = (source: LaunchSource): AgentType => source === 'general' ? 'general' : 'code';
 
+// @compile-time-only: maps the selected agent to its statically known output.
 type AgentOutput = {
 	code: LLMResponse;
 	general: string;
 };
 
-export type UserInput<T extends AgentType = AgentType> = {
-	agentType: T;
-	userPrompt: string;
-	screenshot?: string;
-	launch?: LaunchArgs;
-	onTool?: (event: ToolProgress) => void;
-	onReasoning?: (event: ReasoningProgress) => void;
-};
+const UserInput = z.object({
+	agentType: z.enum(['code', 'general']),
+	userPrompt: z.string(),
+	screenshot: z.string().optional(),
+	launch: LaunchArgs.optional(),
+	onTool: z.custom<(event: ToolProgress) => void>(value => typeof value === 'function').optional(),
+	onReasoning: z.custom<(event: ReasoningProgress) => void>(value => typeof value === 'function').optional(),
+});
+export type UserInput<T extends AgentType = AgentType> =
+	Omit<z.infer<typeof UserInput>, 'agentType'> & Record<'agentType', T>;
 
 export async function generate<T extends AgentType>(input: UserInput<T>) {
+	input = UserInput.parse(input) as UserInput<T>;
 	const agent = agents[input.agentType];
 	const prompt = input.agentType === 'general'
 		? agents.general.buildPrompt(input.userPrompt)

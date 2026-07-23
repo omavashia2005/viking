@@ -1,13 +1,19 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {
+	FindRepoRootParams,
+	FindRepoRootResult,
 	GetLibraryDocsArgs,
+	PreviewLines,
 	QueryArgs,
 	ReadFileArgs,
+	ReadFileParams,
 	ResolveLibraryArgs,
+	ResolveReadPathParams,
+	ResolveReadPathResult,
+	TextToolResult,
 	type GetLibraryDocsArgs as GetLibraryDocsArguments,
 	type QueryArgs as QueryArguments,
-	type ReadFileArgs as ReadFileArguments,
 	type ResolveLibraryArgs as ResolveLibraryArguments,
 	type ToolSummary,
 } from './shared-types';
@@ -19,43 +25,47 @@ import {
 	type ToolContext,
 } from '../tools/utils';
 
-function findRepoRoot(cwd: string): string | undefined {
+function findRepoRoot({ cwd }: FindRepoRootParams): FindRepoRootResult {
 	let dir = path.resolve(cwd || process.cwd());
 	for (; ;) {
-		if (fs.existsSync(path.join(dir, '.git'))) return dir;
+		if (fs.existsSync(path.join(dir, '.git'))) return FindRepoRootResult.parse({ path: dir });
 		const parent = path.dirname(dir);
 		if (parent === dir) return undefined;
 		dir = parent;
 	}
 }
 
-export function resolveReadPath(cwd: string, filePath: string): string {
-	if (path.isAbsolute(filePath)) return filePath;
-	const repoRoot = findRepoRoot(cwd);
-	const bases = repoRoot ? [repoRoot, cwd] : [cwd];
+export function resolveReadPath(params: ResolveReadPathParams): ResolveReadPathResult {
+	const { cwd, filePath } = ResolveReadPathParams.parse(params);
+	if (path.isAbsolute(filePath)) return ResolveReadPathResult.parse({ absolutePath: filePath });
+	const repoRoot = findRepoRoot({ cwd });
+	const bases = repoRoot ? [repoRoot.path, cwd] : [cwd];
 	for (const base of bases) {
 		const absolutePath = path.resolve(base, filePath);
-		if (fs.existsSync(absolutePath)) return absolutePath;
+		if (fs.existsSync(absolutePath)) return ResolveReadPathResult.parse({ absolutePath });
 	}
-	return path.resolve(cwd, filePath);
+	return ResolveReadPathResult.parse({ absolutePath: path.resolve(cwd, filePath) });
 }
 
-function readFile(cwd: string, args: ReadFileArguments): string {
-	const absolutePath = resolveReadPath(cwd, args.path);
+function readFile({ cwd, args }: ReadFileParams): TextToolResult {
+	const { absolutePath } = resolveReadPath({ cwd, filePath: args.path });
 	const lines = fs.readFileSync(absolutePath, 'utf8').split('\n');
 	const start = Math.max(1, args.startLine ?? 1);
 	const end = Math.min(lines.length, args.endLine ?? start + 399);
-	return lines.slice(start - 1, end).map((line, index) => `${start + index}: ${line}`).join('\n');
+	return TextToolResult.parse({
+		content: lines.slice(start - 1, end).map((line, index) => `${start + index}: ${line}`).join('\n'),
+	});
 }
 
-function preview(result?: unknown): string[] | undefined {
-	if (typeof result !== 'string') return undefined;
-	const lines = result.split('\n').map(line => line.trim()).filter(Boolean).slice(0, 4);
-	return lines.length ? lines : undefined;
+function preview(result?: TextToolResult): PreviewLines {
+	const lines = result?.content.split('\n').map(line => line.trim()).filter(Boolean).slice(0, 4);
+	return PreviewLines.parse(lines?.length ? lines : undefined);
 }
 
 export function toolSummary(name: string, args: ToolArguments, result?: unknown): ToolSummary {
-	const previewLines = preview(result);
+	const parsedResult = TextToolResult.safeParse(result);
+	const textResult = parsedResult.success ? parsedResult.data : undefined;
+	const previewLines = preview(textResult);
 	let summary: ToolSummary = { type: 'raw', args, preview: previewLines };
 
 	if (name === 'grep_codebase' || name === 'find_files') {
@@ -65,7 +75,7 @@ export function toolSummary(name: string, args: ToolArguments, result?: unknown)
 				type: 'search',
 				query: parsed.data.query,
 				preview: previewLines,
-				lineCount: typeof result === 'string' ? result.split('\n').filter(Boolean).length : undefined,
+				lineCount: textResult?.content.split('\n').filter(Boolean).length,
 			};
 		}
 		return summary;
@@ -86,31 +96,35 @@ export function toolSummary(name: string, args: ToolArguments, result?: unknown)
 	return summary;
 }
 
-async function runGrepCodebase(args: ToolArguments, context: ToolContext): Promise<string> {
+async function runGrepCodebase(args: ToolArguments, context: ToolContext): Promise<TextToolResult> {
 	const { query }: QueryArguments = QueryArgs.parse(args);
-	return callMcp('fff', context.cwd, 'grep', { query });
+	return TextToolResult.parse({ content: await callMcp('fff', context.cwd, 'grep', { query }) });
 }
 
-async function runFindFiles(args: ToolArguments, context: ToolContext): Promise<string> {
+async function runFindFiles(args: ToolArguments, context: ToolContext): Promise<TextToolResult> {
 	const { query }: QueryArguments = QueryArgs.parse(args);
-	return callMcp('fff', context.cwd, 'find_files', { query });
+	return TextToolResult.parse({ content: await callMcp('fff', context.cwd, 'find_files', { query }) });
 }
 
-function runReadFile(args: ToolArguments, context: ToolContext): string {
-	return readFile(context.cwd, ReadFileArgs.parse(args));
+function runReadFile(args: ToolArguments, context: ToolContext): TextToolResult {
+	return readFile(ReadFileParams.parse({ cwd: context.cwd, args }));
 }
 
-async function runResolveLibraryId(args: ToolArguments, context: ToolContext): Promise<string> {
+async function runResolveLibraryId(args: ToolArguments, context: ToolContext): Promise<TextToolResult> {
 	const { libraryName }: ResolveLibraryArguments = ResolveLibraryArgs.parse(args);
-	return callMcp('context7', context.cwd, 'resolve-library-id', { libraryName });
+	return TextToolResult.parse({
+		content: await callMcp('context7', context.cwd, 'resolve-library-id', { libraryName }),
+	});
 }
 
-async function runGetLibraryDocs(args: ToolArguments, context: ToolContext): Promise<string> {
+async function runGetLibraryDocs(args: ToolArguments, context: ToolContext): Promise<TextToolResult> {
 	const { libraryId, topic }: GetLibraryDocsArguments = GetLibraryDocsArgs.parse(args);
-	return callMcp('context7', context.cwd, 'get-library-docs', {
-		context7CompatibleLibraryID: libraryId,
-		topic,
-		tokens: 2000,
+	return TextToolResult.parse({
+		content: await callMcp('context7', context.cwd, 'get-library-docs', {
+			context7CompatibleLibraryID: libraryId,
+			topic,
+			tokens: 2000,
+		}),
 	});
 }
 
@@ -147,4 +161,4 @@ const codeTools: RegisteredTool[] = [
 	},
 ];
 
-export const buildCodeTools = (cwd: string) => buildTools(codeTools, cwd);
+export const buildCodeTools = (cwd: ToolContext['cwd']): ReturnType<typeof buildTools> => buildTools(codeTools, cwd);
