@@ -2,9 +2,9 @@ import { Composio } from '@composio/core';
 import { VercelProvider } from '@composio/vercel';
 import type { ToolSet } from 'ai';
 import { config } from '../../config';
+import { COMPOSIO_USER_ID } from '../../connectors';
 import type { ToolArguments } from '../tools/utils';
 
-const COMPOSIO_USER_ID = 'viking-local-user';
 let composioApiKey: string | undefined;
 let toolsPromise: Promise<ToolSet> | undefined;
 

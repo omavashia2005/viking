@@ -16,9 +16,6 @@ export const config = {
 		model: process.env.LLM_MODEL ?? 'anthropic/claude-opus-4.8',
 	},
 	connectors: {
-		exa: {
-			apiKey: process.env.EXA_API_KEY ?? '',
-		},
 		composio: {
 			apiKey: process.env.COMPOSIO_API_KEY ?? '',
 		},
@@ -38,7 +35,6 @@ export const PersistedSettings = z.object({
 		model: z.string(),
 	}).partial().optional(),
 	connectors: z.object({
-		exa: z.object({ apiKey: z.string() }).partial().optional(),
 		composio: z.object({ apiKey: z.string() }).partial().optional(),
 	}).optional(),
 	hotkeys: z.object({

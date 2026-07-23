@@ -324,7 +324,7 @@ const CodeBlockBody = memo(
 
 CodeBlockBody.displayName = "CodeBlockBody";
 
-export const CodeBlockContainer = ({
+const CodeBlockContainer = ({
   className,
   language,
   style,
@@ -394,7 +394,7 @@ export const CodeBlockActions = ({
   </div>
 );
 
-export const CodeBlockContent = ({
+const CodeBlockContent = ({
   code,
   language,
   showLineNumbers = false,
@@ -415,24 +415,18 @@ export const CodeBlockContent = ({
   );
 
   // Async highlighting result (populated after shiki loads)
-  const [asyncTokens, setAsyncTokens] = useState<TokenizedCode | null>(null);
-  const asyncKeyRef = useRef({ code, language });
-
-  // Invalidate stale async tokens synchronously during render
-  if (
-    asyncKeyRef.current.code !== code ||
-    asyncKeyRef.current.language !== language
-  ) {
-    asyncKeyRef.current = { code, language };
-    setAsyncTokens(null);
-  }
+  const [asyncHighlight, setAsyncHighlight] = useState<{
+    code: string;
+    language: CodeLanguageType;
+    tokens: TokenizedCode;
+  } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
 
     highlightCode(code, language, (result) => {
       if (!cancelled) {
-        setAsyncTokens(result);
+        setAsyncHighlight({ code, language, tokens: result });
       }
     });
 
@@ -441,7 +435,10 @@ export const CodeBlockContent = ({
     };
   }, [code, language]);
 
-  const tokenized = asyncTokens ?? syncTokens;
+  const tokenized =
+    asyncHighlight?.code === code && asyncHighlight.language === language
+      ? asyncHighlight.tokens
+      : syncTokens;
 
   return (
     <div className="relative overflow-auto">

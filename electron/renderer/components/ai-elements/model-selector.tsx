@@ -1,13 +1,10 @@
 import {
   Command,
-  CommandDialog,
   CommandEmpty,
   CommandGroup,
   CommandInput,
   CommandItem,
   CommandList,
-  CommandSeparator,
-  CommandShortcut,
 } from "@/electron/renderer/components/ui/command";
 import {
   Dialog,
@@ -55,12 +52,6 @@ export const ModelSelectorContent = ({
   </DialogContent>
 );
 
-export type ModelSelectorDialogProps = ComponentProps<typeof CommandDialog>;
-
-export const ModelSelectorDialog = (props: ModelSelectorDialogProps) => (
-  <CommandDialog {...props} />
-);
-
 export type ModelSelectorInputProps = ComponentProps<typeof CommandInput>;
 
 export const ModelSelectorInput = ({
@@ -92,20 +83,6 @@ export type ModelSelectorItemProps = ComponentProps<typeof CommandItem>;
 
 export const ModelSelectorItem = (props: ModelSelectorItemProps) => (
   <CommandItem {...props} />
-);
-
-export type ModelSelectorShortcutProps = ComponentProps<typeof CommandShortcut>;
-
-export const ModelSelectorShortcut = (props: ModelSelectorShortcutProps) => (
-  <CommandShortcut {...props} />
-);
-
-export type ModelSelectorSeparatorProps = ComponentProps<
-  typeof CommandSeparator
->;
-
-export const ModelSelectorSeparator = (props: ModelSelectorSeparatorProps) => (
-  <CommandSeparator {...props} />
 );
 
 export type ModelSelectorLogoProps = Omit<
@@ -185,21 +162,6 @@ export const ModelSelectorLogo = ({
     height={12}
     src={`https://models.dev/logos/${provider}.svg`}
     width={12}
-  />
-);
-
-export type ModelSelectorLogoGroupProps = ComponentProps<"div">;
-
-export const ModelSelectorLogoGroup = ({
-  className,
-  ...props
-}: ModelSelectorLogoGroupProps) => (
-  <div
-    className={cn(
-      "flex shrink-0 items-center -space-x-1 [&>img]:rounded-full [&>img]:bg-background [&>img]:p-px [&>img]:ring-1 dark:[&>img]:bg-foreground",
-      className,
-    )}
-    {...props}
   />
 );
 

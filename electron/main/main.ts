@@ -1,4 +1,4 @@
-import { app, BrowserWindow, globalShortcut, ipcMain, screen, desktopCapturer, nativeImage, powerMonitor } from 'electron';
+import { app, BrowserWindow, globalShortcut, ipcMain, screen, desktopCapturer, nativeImage, powerMonitor, shell } from 'electron';
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import fs from 'node:fs';
@@ -9,6 +9,7 @@ import type { Option } from './agent/code/shared-types';
 import { closeMcpConnections, warmMcpConnections } from './agent/tools/utils';
 import { getGatewayModels } from './agent/gateway-models';
 import { normalizeLaunchSource } from '../../setup/ides/types';
+import { connectConnector, getConnectorStatuses } from './connectors';
 
 if (process.argv.includes('--viking-dev')) {
 	app.setPath('userData', path.join(app.getPath('appData'), 'viking-dev'));
@@ -56,7 +57,6 @@ function loadSettings(): void {
 	try {
 		const j = PersistedSettings.parse(JSON.parse(fs.readFileSync(settingsFile(), 'utf8')));
 		if (j.llm) Object.assign(config.llm, j.llm);
-		if (j.connectors?.exa) Object.assign(config.connectors.exa, j.connectors.exa);
 		if (j.connectors?.composio) Object.assign(config.connectors.composio, j.connectors.composio);
 		if (j.hotkeys) {
 			delete (j.hotkeys as { home?: string }).home; // ponytail: 'home' hotkey removed; persisted files would resurrect it
@@ -69,7 +69,6 @@ function loadSettings(): void {
 }
 function saveSettings(s: PersistedSettingsType): void {
 	if (s.llm) Object.assign(config.llm, s.llm);
-	if (s.connectors?.exa) Object.assign(config.connectors.exa, s.connectors.exa);
 	if (s.connectors?.composio) Object.assign(config.connectors.composio, s.connectors.composio);
 	if (s.hotkeys) Object.assign(config.hotkeys, s.hotkeys);
 	if (s.theme) config.theme = s.theme;
@@ -219,11 +218,6 @@ function friendly(err: Error): string {
 	const m = err.message ?? String(err);
 	if (!config.llm.apiKey) return 'No API key. Open model settings (⌘S) and enter an AI Gateway API key.';
 	if (/COMPOSIO_API_KEY/.test(m)) return 'No Composio API key. Open settings (⌘S) → connectors and enter one.';
-	if (/EXA_API_KEY/.test(m)) return 'No Exa API key. Open settings (⌘S) → connectors and enter one.';
-	if (/Exa API error \(401\)|INVALID_API_KEY/.test(m)) return 'Exa rejected the API key. Check EXA_API_KEY and try again.';
-	if (/Exa API error \(402\)|NO_MORE_CREDITS|BUDGET_EXCEEDED/.test(m)) return 'Exa has no available credits or the API key budget was exceeded.';
-	if (/Exa API error \(429\)/.test(m)) return 'Exa rate limit reached. Wait a moment and try again.';
-	if (/Exa API error \(5\d\d\)|Exa request failed/.test(m)) return 'Could not reach Exa. Check your connection and try again.';
 	if (/ENOENT/.test(m) && /fff-mcp/.test(m)) return `fff-mcp not found at ${config.mcp.fff.command}. Install it, or edit electron/main/config.ts -> mcp.fff.command.`;
 	if (/401|invalid_api_key|Incorrect API key|Unauthenticated/i.test(m)) return 'AI Gateway rejected the API key. Check it in model settings (⌘S).';
 	if (/ENOTFOUND|ECONNREFUSED|fetch failed/i.test(m)) return 'Could not reach Vercel AI Gateway. Check your connection.';
@@ -381,7 +375,6 @@ app.whenReady().then(() => {
 	ipcMain.handle('viking:getSettings', () => ({
 		llm: { ...config.llm },
 		connectors: {
-			exa: { ...config.connectors.exa },
 			composio: { ...config.connectors.composio },
 		},
 		hotkeys: { ...config.hotkeys },
@@ -389,6 +382,8 @@ app.whenReady().then(() => {
 		growth: config.growth,
 	}));
 	ipcMain.handle('viking:getModels', getGatewayModels);
+	ipcMain.handle('viking:getConnectorStatuses', (_e, input: unknown) => getConnectorStatuses(input));
+	ipcMain.handle('viking:connectConnector', (_e, input: unknown) => connectConnector(input, url => shell.openExternal(url)));
 	ipcMain.handle('viking:saveSettings', (e, input: unknown) => {
 		const s = PersistedSettings.parse(input);
 		const prevOpen = config.hotkeys.open;
@@ -401,7 +396,6 @@ app.whenReady().then(() => {
 		const snap = {
 			llm: { ...config.llm },
 			connectors: {
-				exa: { ...config.connectors.exa },
 				composio: { ...config.connectors.composio },
 			},
 			hotkeys: { ...config.hotkeys },

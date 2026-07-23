@@ -6,7 +6,7 @@ import { TitleBar } from './components/TitleBar';
 import { ErrorView } from '@/electron/renderer/components/ErrorView';
 import { SoftAlert } from '@/electron/renderer/components/SoftAlert';
 import { Tabs, TabsContent } from '@/electron/renderer/components/ui/tabs';
-import { THEMES, type ConnectorSettings, type Hotkeys, type LLM, type Theme } from '../../shared-types';
+import { THEMES, type ConnectorId, type ConnectorSettings, type ConnectorStatus, type Hotkeys, type LLM, type Theme } from '../../shared-types';
 import type { Phase } from './shared-types';
 import { ToolCallLog, type ToolCallEntry } from './components/ToolCallLog';
 import { SearchResult } from '../general/components/SearchResult';
@@ -112,6 +112,8 @@ declare global {
       openSettings: () => void;
       getSettings: () => Promise<{ llm: LLM; connectors: ConnectorSettings; hotkeys: Hotkeys; theme: Theme; growth: 'down' | 'up' }>;
       getModels: () => Promise<GatewayModel[]>;
+      getConnectorStatuses: (input: { apiKey: string; connectorIds: ConnectorId[] }) => Promise<ConnectorStatus[]>;
+      connectConnector: (input: { apiKey: string; connectorId: ConnectorId }) => Promise<ConnectorStatus>;
       saveSettings: (s: { llm?: Partial<LLM>; connectors?: ConnectorSettings; hotkeys?: Partial<Hotkeys>; theme?: Theme; growth?: 'down' | 'up' }) => Promise<void>;
     };
   }

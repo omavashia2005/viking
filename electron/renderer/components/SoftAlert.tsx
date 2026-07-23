@@ -14,6 +14,7 @@ export function SoftAlert({ message, onDismiss }: { message: string; onDismiss: 
         {message}
       </MarkerContent>
       <button
+        type="button"
         className="shrink-0 cursor-pointer text-muted-foreground transition-colors hover:text-foreground"
         onClick={onDismiss}
         aria-label="dismiss"
