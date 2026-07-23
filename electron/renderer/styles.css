@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "ai-tool-elements/styles.css";
 @import "./themes.css";
 
 @theme inline {

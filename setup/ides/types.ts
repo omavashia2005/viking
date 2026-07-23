@@ -2,7 +2,6 @@ import { z } from 'zod';
 
 export const IdeId = z.enum(['neovim', 'vscode']);
 export type IdeId = z.infer<typeof IdeId>;
-export const ideIds = IdeId.options;
 
 export const LaunchSource = z.union([IdeId, z.literal('general')]);
 export type LaunchSource = z.infer<typeof LaunchSource>;

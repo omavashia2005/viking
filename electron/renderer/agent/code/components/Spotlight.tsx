@@ -12,12 +12,13 @@ type Props = {
   children?: React.ReactNode; // alert slot
 };
 
+const growTextarea = (el: HTMLTextAreaElement): void => {
+  el.style.height = 'auto';
+  el.style.height = `${el.scrollHeight}px`;
+  window.viking.resize(el.scrollHeight + 48);
+};
+
 export function Spotlight({ prompt, refineFrom, inputRef, onChange, onSubmit, className, children }: Props): React.ReactNode {
-  const growTextarea = (el: HTMLTextAreaElement) => {
-    el.style.height = 'auto';
-    el.style.height = `${el.scrollHeight}px`;
-    window.viking.resize(el.scrollHeight + 48);
-  };
   return (
     <div className={className ? `spot ${className}` : 'spot'}>
       <form className="prompt" onSubmit={e => { e.preventDefault(); onSubmit(); }}>
@@ -32,7 +33,6 @@ export function Spotlight({ prompt, refineFrom, inputRef, onChange, onSubmit, cl
           rows={1}
           placeholder={refineFrom ? `refine "${refineFrom.label}"…` : 'ask viking anything'}
           spellCheck={false}
-          autoFocus
         />
         {refineFrom && <span className="chip">↻ {refineFrom.language}</span>}
       </form>
