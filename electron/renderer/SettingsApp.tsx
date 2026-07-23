@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { ToolCard, toolCatalog } from 'ai-tool-elements';
-import { Search } from 'lucide-react';
+import { Check, Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ModelPicker } from './components/ModelPicker';
 import { THEMES, type ConnectorId, type ConnectorSettings, type ConnectorStatus, type Hotkeys, type LLM, type Theme } from './shared-types';
@@ -284,28 +284,34 @@ function ThemeCard({ value, selected, onSelect }: { value: Theme; selected: bool
   return (
     <button
       type="button"
-      data-theme={value}
       onClick={onSelect}
       aria-pressed={selected}
-      className={cn(
-        'flex w-[210px] flex-col gap-2.5 rounded-xl border bg-card p-3 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring',
-        selected ? 'border-transparent ring-2 ring-ring' : 'border-border hover:border-foreground/30',
-      )}
+      className="flex w-[210px] flex-col gap-2.5 p-3 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
-      <span className="flex items-center gap-2 rounded-lg border border-border bg-card px-2.5 py-2">
-        <Search className="shrink-0 text-muted-foreground" size={11} />
-        <span className="text-[10px] italic leading-none text-muted-foreground">ask viking anything</span>
-      </span>
-      <span className="flex flex-col gap-1.5 rounded-lg border border-border bg-card p-2.5">
-        <span className="flex gap-1.5">
-          <span className="rounded-[3px] bg-secondary px-1 py-0.5 text-[7.5px] lowercase leading-none text-foreground">⌘1 fix.ts</span>
-          <span className="py-0.5 text-[7.5px] lowercase leading-none text-muted-foreground">⌘2 alt</span>
+      <span data-theme={value} className="contents">
+        <span className="flex items-center gap-2 rounded-lg border border-border bg-card px-2.5 py-2">
+          <Search className="shrink-0 text-muted-foreground" size={11} />
+          <span className="text-[10px] italic leading-none text-muted-foreground">ask viking anything</span>
         </span>
-        <span className="mt-1 block h-[3px] w-4/5 rounded-full bg-primary/70" />
-        <span className="block h-[3px] w-3/5 rounded-full bg-foreground/30" />
-        <span className="block h-[3px] w-2/3 rounded-full bg-foreground/15" />
+        <span className="flex flex-col gap-1.5 rounded-lg border border-border bg-card p-2.5">
+          <span className="flex gap-1.5">
+            <span className="rounded-[3px] bg-secondary px-1 py-0.5 text-[7.5px] lowercase leading-none text-foreground">⌘1 fix.ts</span>
+            <span className="py-0.5 text-[7.5px] lowercase leading-none text-muted-foreground">⌘2 alt</span>
+          </span>
+          <span className="mt-1 block h-[3px] w-4/5 rounded-full bg-primary/70" />
+          <span className="block h-[3px] w-3/5 rounded-full bg-foreground/30" />
+          <span className="block h-[3px] w-2/3 rounded-full bg-foreground/15" />
+        </span>
       </span>
-      <span className="px-0.5 text-[10.5px] lowercase tracking-[0.16em] text-foreground">{value}</span>
+      <span className="flex items-center justify-between gap-2 px-0.5">
+        <span className="text-[10.5px] lowercase tracking-[0.16em] text-foreground">{value}</span>
+        {selected && (
+          <span className="flex items-center gap-1 rounded-full bg-primary px-2 py-1 text-[8px] font-bold lowercase leading-none tracking-[0.08em] text-primary-foreground">
+            <Check aria-hidden size={9} strokeWidth={3} />
+            selected
+          </span>
+        )}
+      </span>
     </button>
   );
 }
