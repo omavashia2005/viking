@@ -42,6 +42,19 @@ assert.equal(
   "Searched for “ToolCallLog” (2 lines)",
 );
 
+assert.equal(
+  formatToolSummary("COMPOSIO_MULTI_EXECUTE_TOOL", {
+    type: "raw",
+    args: {
+      tools: [{
+        tool_slug: "EXA_SEARCH",
+        arguments: { query: "AI news", limit: 5 },
+      }],
+    },
+  }),
+  "Ran Exa Search — Query: AI news",
+);
+
 const html = renderToStaticMarkup(
   <ToolCallLog
     calls={[
@@ -82,5 +95,10 @@ assert.match(html, /data-state="output-available"/);
 assert.match(html, /data-state="output-error"/);
 assert.match(html, />Find tools</);
 assert.match(html, />Search codebase</);
+assert.match(html, /Found tools for “Find a web search tool”/);
 assert.match(html, /Searched for “ToolCallLog” \(2 lines\)/);
+assert.match(html, /Used Read file — Path: missing.ts/);
 assert.match(html, /File not found/);
+assert.doesNotMatch(html, />Input</);
+assert.doesNotMatch(html, />Output</);
+assert.doesNotMatch(html, /&quot;thought&quot;/);

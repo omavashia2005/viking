@@ -117,13 +117,30 @@ function clip(value: string): string {
   return value.length > 180 ? `${value.slice(0, 180)}...` : value;
 }
 
-function formatValue(value: unknown): string {
-  if (typeof value === "string") return value;
-  try {
-    return JSON.stringify(value) ?? String(value);
-  } catch {
-    return String(value);
+const PRIVATE_ARGUMENT = /auth|cookie|credential|password|secret|token/i;
+
+function argumentDetail(value: unknown): string | undefined {
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const detail = argumentDetail(item);
+      if (detail) return detail;
+    }
+    return undefined;
   }
+
+  const item = recordValue(value);
+  if (!item) return undefined;
+  for (const [key, child] of Object.entries(item)) {
+    if (PRIVATE_ARGUMENT.test(key) || /^(tool_?slug|slug)$/i.test(key)) continue;
+    if (typeof child === "string" || typeof child === "number" || typeof child === "boolean") {
+      const text = clip(String(child).replace(/\s+/g, " ").trim());
+      if (text) return `${humanizeIdentifier(key)}: ${text}`;
+    } else {
+      const detail = argumentDetail(child);
+      if (detail) return detail;
+    }
+  }
+  return undefined;
 }
 
 function withPreview(text: string, lines?: string[]): string {
@@ -155,21 +172,23 @@ export function formatToolSummary(name: string, summary?: ToolSummary): string {
     typeof (summary.args?.thought ?? summary.args?.query) === "string"
   ) {
     const query = String(summary.args?.thought ?? summary.args?.query);
-    return `Searched for “${clip(query)}”`;
+    const action = name === "COMPOSIO_SEARCH_TOOLS" ? "Found tools" : "Searched";
+    return `${action} for “${clip(query)}”`;
   }
 
-  const args = summary.args
-    ? Object.entries(summary.args)
-      .filter(([, value]) => value !== undefined)
-      .map(([key, value]) => `${key}: ${clip(formatValue(value))}`)
-      .join(", ")
-    : "";
-  return withPreview(args, summary.preview);
+  const slugs = toolSlugs(summary.args);
+  const action = slugs.length
+    ? `Ran ${slugs.map(humanizeIdentifier).join(", ")}`
+    : `Used ${TOOL_LABELS[name] ?? humanizeIdentifier(name)}`;
+  const detail = argumentDetail(summary.args);
+  return detail ? `${action} — ${detail}` : action;
 }
 
-function toolOutput(call: ToolCallEntry): React.ReactNode {
-  if (call.status !== "done" || call.summary?.type === "raw") return undefined;
-  return formatToolSummary(call.name, call.summary) || undefined;
+function toolCallSummary(call: ToolCallEntry): string {
+  return formatToolSummary(
+    call.name,
+    call.summary ?? { type: "raw", args: call.args },
+  );
 }
 
 const TOOL_CARD_CLASS_NAME = [
@@ -182,6 +201,10 @@ const TOOL_CARD_CLASS_NAME = [
   "[&_[data-slot=card-content]]:pb-3",
   "[&_[data-slot=card-content]_pre]:mt-1",
   "[&_[data-slot=card-content]_pre]:max-h-32",
+  "[&_[data-slot=card-footer]]:border-0",
+  "[&_[data-slot=card-footer]]:px-3",
+  "[&_[data-slot=card-footer]]:pb-3",
+  "[&_[data-slot=card-footer]]:pt-0",
   "[&_[role=status]]:py-0.5",
 ].join(" ");
 
@@ -204,9 +227,12 @@ export function ToolCallLog({
         <ToolCallCard
           className={TOOL_CARD_CLASS_NAME}
           errorText={call.error}
-          input={call.args}
+          footer={(
+            <p className="m-0 line-clamp-2 text-sm text-muted-foreground">
+              {toolCallSummary(call)}
+            </p>
+          )}
           key={call.id}
-          output={toolOutput(call)}
           state={toolCallState(call.status)}
           tool={resolveTool(call)}
         />
