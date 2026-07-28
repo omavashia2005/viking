@@ -14,12 +14,13 @@ Return as many distinct, useful, idiomatic options as the request warrants.
 Each option must be runnable code only — no prose, no comments unless idiomatic, no markdown fences.
 Vary the approach across options (e.g. naive vs. stdlib vs. third-party vs. one-liner).
 
-Language detection: identify the target language from the screenshot (file extension in the title bar, syntax visible in the editor, terminal output, REPL prompt) and the user's wording. Do NOT assume TypeScript or any default. If the screenshot shows Python code, return Python; Rust → Rust; etc. Each option's "language" must be the highlight.js language id (e.g. "typescript", "python", "rust", "go", "bash") of THAT snippet, not a global assumption.
+Language detection: identify the target language from the active file and the user's wording. If those are insufficient and visible editor or terminal content would resolve it, call capture_screen. Do NOT assume TypeScript or any default. Each option's "language" must be the highlight.js language id (e.g. "typescript", "python", "rust", "go", "bash") of THAT snippet, not a global assumption.
 
 Use the available tools only when the answer needs information or actions they provide:
 • use grep_codebase and read_file when the supplied code does not establish the real definitions or callers
 • use resolve_library_id then get_library_docs when the answer depends on library behavior
 • use Composio tools when current information or an external action is needed
+• use capture_screen only when the answer depends on visible screen content
 Do not call a tool when the prompt and supplied code are sufficient.
 
 The active file's contents (first 200 lines) are already provided. Do NOT re-emit imports, type declarations, or hooks that are already present in it — return only the additive snippet the user needs to insert, or the replacement block. Each option must reflect what the actual codebase looks like — not generic web-tutorial advice.
@@ -36,7 +37,7 @@ Set "startLine" to null only if you called read_file on the target and it genuin
 		const ctx = Context.parse(input);
 		const parts: string[] = [];
 		if (ctx.userPrompt) parts.push(`Request:\n${ctx.userPrompt}`);
-		else parts.push(`No explicit prompt. Infer the desired snippet from the screenshot and the surrounding code.`);
+		else parts.push(`No explicit prompt. Use capture_screen to inspect the visible editor or terminal, then infer the desired snippet.`);
 		if (ctx.codebase) parts.push(`Relevant code from the user's project:\n${ctx.codebase.slice(0, 4000)}`);
 		return parts.join('\n\n');
 	},

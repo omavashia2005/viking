@@ -1,4 +1,4 @@
-import { app, BrowserWindow, globalShortcut, ipcMain, screen, desktopCapturer, nativeImage, powerMonitor, shell } from 'electron';
+import { app, BrowserWindow, globalShortcut, ipcMain, screen, desktopCapturer, powerMonitor, shell } from 'electron';
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import fs from 'node:fs';
@@ -171,12 +171,12 @@ function openSettingsWindow(): void {
 
 async function captureScreen(): Promise<string | undefined> {
 	try {
+		console.log('[viking] screen capture requested');
 		const { width, height } = screen.getPrimaryDisplay().size;
 		const sources = await desktopCapturer.getSources({ types: ['screen'], thumbnailSize: { width, height } });
 		const img = sources[0]?.thumbnail;
 		if (!img || img.isEmpty()) return undefined;
 		const jpeg = img.toJPEG(70);
-		const screenshot = nativeImage.createFromBuffer(jpeg).toDataURL();
 		try {
 			const dir = path.join(app.getPath('pictures'), 'viking-screenshots');
 			const file = path.join(dir, `query-${Date.now()}-${++queryNumber}.jpg`);
@@ -186,7 +186,7 @@ async function captureScreen(): Promise<string | undefined> {
 		} catch (error) {
 			console.warn('[viking] screenshot save failed:', error);
 		}
-		return screenshot;
+		return jpeg.toString('base64');
 	} catch { return undefined; }
 }
 
@@ -239,17 +239,16 @@ function buildPrompt(prompt: string | undefined, refineFrom?: Option): string | 
 async function run(prompt: string | undefined, refineFrom?: Option): Promise<void> {
 	setMode('full');
 	win?.webContents.send('viking:loading');
-	const screenshot = await captureScreen();
 	try {
 		const agentType = agentTypeForSource(currentLaunch.source);
 		console.log('[viking] run:', agentType === 'general'
-			? { source: currentLaunch.source, agentType, hasScreenshot: !!screenshot }
+			? { source: currentLaunch.source, agentType }
 			: { source: currentLaunch.source, agentType, cwd: currentLaunch.cwd || config.cwd, hasActiveFile: !!currentLaunch.activeFile });
 		if (agentType === 'general') {
 			const { output, reasoning, softError } = await generate({
 				agentType,
 				userPrompt: prompt ?? '',
-				screenshot: screenshot ?? '',
+				captureScreen,
 				onTool: event => win?.webContents.send('viking:tool', event),
 			});
 			lastOptions = [];
@@ -261,7 +260,7 @@ async function run(prompt: string | undefined, refineFrom?: Option): Promise<voi
 		const { output, reasoning, softError } = await generate({
 			agentType,
 			userPrompt: buildPrompt(prompt, refineFrom) ?? '',
-			screenshot: screenshot ?? '',
+			captureScreen,
 			launch: currentLaunch,
 			onTool: event => win?.webContents.send('viking:tool', event),
 		});
