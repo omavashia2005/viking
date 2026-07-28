@@ -5,8 +5,9 @@ import {
 	isStepCount,
 	NoObjectGeneratedError,
 	Output,
+	tool,
 	type FlexibleSchema,
-	type UserContent,
+	type ToolSet,
 } from 'ai';
 import { z } from 'zod';
 import { config } from '../config';
@@ -56,6 +57,41 @@ export const agents = {
 export type AgentType = keyof typeof agents;
 export const agentTypeForSource = (source: LaunchSource): AgentType => source === 'general' ? 'general' : 'code';
 
+const ScreenCapture = z.object({
+	data: z.string().min(1),
+	mediaType: z.literal('image/jpeg'),
+});
+
+export async function buildAgentTools(
+	cwd: string,
+	captureScreen: () => Promise<string | undefined>,
+): Promise<ToolSet> {
+	return {
+		...buildCodeTools(cwd),
+		...await buildGeneralTools(),
+		capture_screen: tool({
+			description: 'Capture the primary display. Use only when the request depends on visible screen content not already present in the prompt or files.',
+			inputSchema: z.object({}),
+			execute: async () => {
+				const data = await captureScreen();
+				if (!data) throw new Error('Screen capture unavailable.');
+				return ScreenCapture.parse({ data, mediaType: 'image/jpeg' });
+			},
+			toModelOutput: ({ output }) => {
+				const screenshot = ScreenCapture.parse(output);
+				return {
+					type: 'content',
+					value: [{
+						type: 'file',
+						mediaType: screenshot.mediaType,
+						data: { type: 'data', data: screenshot.data },
+					}],
+				};
+			},
+		}),
+	};
+}
+
 // @compile-time-only: maps the selected agent to its statically known output.
 type AgentOutput = {
 	code: LLMResponse;
@@ -65,7 +101,7 @@ type AgentOutput = {
 const UserInput = z.object({
 	agentType: z.enum(['code', 'general']),
 	userPrompt: z.string(),
-	screenshot: z.string().optional(),
+	captureScreen: z.custom<() => Promise<string | undefined>>(value => typeof value === 'function'),
 	launch: LaunchArgs.optional(),
 	onTool: z.custom<(event: ToolProgress) => void>(value => typeof value === 'function').optional(),
 	onReasoning: z.custom<(event: ReasoningProgress) => void>(value => typeof value === 'function').optional(),
@@ -79,12 +115,8 @@ export async function generate<T extends AgentType>(input: UserInput<T>) {
 	const prompt = input.agentType === 'general'
 		? agents.general.buildPrompt(input.userPrompt)
 		: agents.code.buildPrompt(input.userPrompt, input.launch?.activeFile);
-	const tools = await (input.agentType === 'general'
-		? agents.general.buildTools()
-		: agents.code.buildTools(input.launch?.cwd || config.cwd));
-	const userContent: UserContent = [{ type: 'text', text: prompt }];
-	if (input.screenshot) userContent.push({ type: 'file', mediaType: 'image/jpeg', data: input.screenshot });
-	console.log('[viking:llm] query', { agentType: input.agentType, model: config.llm.model, hasScreenshot: !!input.screenshot, prompt });
+	const tools = await buildAgentTools(input.launch?.cwd || config.cwd, input.captureScreen);
+	console.log('[viking:llm] query', { agentType: input.agentType, model: config.llm.model, prompt });
 
 	let reasoningStep = 0;
 	try {
@@ -97,7 +129,7 @@ export async function generate<T extends AgentType>(input: UserInput<T>) {
 		const result = await generateText({
 			model: getGateway()(config.llm.model),
 			instructions: agent.instructions,
-			messages: [{ role: 'user', content: userContent }],
+			messages: [{ role: 'user', content: prompt }],
 			tools,
 			output,
 			stopWhen: input.agentType === 'general' ? isStepCount(5) : isLoopFinished(),
@@ -122,7 +154,7 @@ export async function generate<T extends AgentType>(input: UserInput<T>) {
 				}
 				console.log(
 					`[viking:llm] tool ← ${toolCall.toolName}`,
-					input.agentType === 'general' ? 'complete' : toolOutput.output,
+					input.agentType === 'general' || toolCall.toolName === 'capture_screen' ? 'complete' : toolOutput.output,
 				);
 				input.onTool?.({
 					id: toolCall.toolCallId,
