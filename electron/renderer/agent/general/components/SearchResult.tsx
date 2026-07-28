@@ -8,7 +8,6 @@ import {
   ArtifactHeader,
   ArtifactTitle,
 } from '@/electron/renderer/components/ai-elements/artifact';
-
 const markdownComponents: Components = {
   a: ({ node: _node, ...props }) => (
     <a {...props} rel="noreferrer" target="_blank" />
