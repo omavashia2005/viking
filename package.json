@@ -43,7 +43,7 @@
     "@modelcontextprotocol/sdk": "^1.0.4",
     "@upstash/context7-mcp": "^1.0.14",
     "ai": "^7.0.32",
-    "ai-tool-elements": "^0.1.0",
+    "ai-tool-elements": "^0.2.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
