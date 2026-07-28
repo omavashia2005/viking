@@ -1,9 +1,17 @@
 import assert from 'node:assert/strict';
-import { ConnectorRequest, connectorStatuses } from './connectors';
+import { ConnectorRequest, ConnectorStatusesRequest, connectorStatuses } from './connectors';
 
 assert.throws(
 	() => ConnectorRequest.parse({ apiKey: 'key', connectorId: 'bad/toolkit' }),
 	/Invalid/,
+);
+
+assert.equal(
+	ConnectorStatusesRequest.parse({
+		apiKey: 'key',
+		connectorIds: Array.from({ length: 251 }, (_, index) => `tool-${index}`),
+	}).connectorIds.length,
+	251,
 );
 
 assert.deepEqual(

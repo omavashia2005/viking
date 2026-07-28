@@ -19,7 +19,7 @@ export const ConnectorRequest = ComposioKeyRequest.extend({
 });
 
 export const ConnectorStatusesRequest = ComposioKeyRequest.extend({
-	connectorIds: z.array(ConnectorId).max(250),
+	connectorIds: z.array(ConnectorId),
 });
 
 const ConnectedAccountList = z.object({
