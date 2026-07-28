@@ -10,7 +10,7 @@ let toolsPromise: Promise<ToolSet> | undefined;
 
 export function buildGeneralTools(): Promise<ToolSet> {
 	const apiKey = config.connectors.composio.apiKey.trim();
-	if (!apiKey) throw new Error('COMPOSIO_API_KEY is required for general-agent tools.');
+	if (!apiKey) return Promise.resolve({});
 	if (toolsPromise && composioApiKey === apiKey) return toolsPromise;
 
 	composioApiKey = apiKey;

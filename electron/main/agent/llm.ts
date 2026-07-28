@@ -6,6 +6,7 @@ import {
 	NoObjectGeneratedError,
 	Output,
 	type FlexibleSchema,
+	type ToolSet,
 	type UserContent,
 } from 'ai';
 import { z } from 'zod';
@@ -56,6 +57,13 @@ export const agents = {
 export type AgentType = keyof typeof agents;
 export const agentTypeForSource = (source: LaunchSource): AgentType => source === 'general' ? 'general' : 'code';
 
+export async function buildAgentTools(cwd: string): Promise<ToolSet> {
+	return {
+		...buildCodeTools(cwd),
+		...await buildGeneralTools(),
+	};
+}
+
 // @compile-time-only: maps the selected agent to its statically known output.
 type AgentOutput = {
 	code: LLMResponse;
@@ -79,9 +87,7 @@ export async function generate<T extends AgentType>(input: UserInput<T>) {
 	const prompt = input.agentType === 'general'
 		? agents.general.buildPrompt(input.userPrompt)
 		: agents.code.buildPrompt(input.userPrompt, input.launch?.activeFile);
-	const tools = await (input.agentType === 'general'
-		? agents.general.buildTools()
-		: agents.code.buildTools(input.launch?.cwd || config.cwd));
+	const tools = await buildAgentTools(input.launch?.cwd || config.cwd);
 	const userContent: UserContent = [{ type: 'text', text: prompt }];
 	if (input.screenshot) userContent.push({ type: 'file', mediaType: 'image/jpeg', data: input.screenshot });
 	console.log('[viking:llm] query', { agentType: input.agentType, model: config.llm.model, hasScreenshot: !!input.screenshot, prompt });
